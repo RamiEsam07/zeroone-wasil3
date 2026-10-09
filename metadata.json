@@ -1,0 +1,6 @@
+{
+  "name": "Wasil Delivery",
+  "description": "منصة التوصيل السريع الرائدة في السودان - تصفح المطاعم والمتاجر، إدارة السلة، وتتبع الطلبات المباشر",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
