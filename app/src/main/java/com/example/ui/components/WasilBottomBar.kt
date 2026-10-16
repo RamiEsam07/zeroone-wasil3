@@ -44,7 +44,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(BottomTab.HOME, "الرئيسية", Icons.Filled.Home, Icons.Outlined.Home, "nav_home"),
-    BottomNavItem(BottomTab.STORES, "المتاجر", Icons.Filled.Storefront, Icons.Outlined.Storefront, "nav_stores"),
+    BottomNavItem(BottomTab.STORES, "التصنيفات", Icons.Filled.Storefront, Icons.Outlined.Storefront, "nav_stores"),
     BottomNavItem(BottomTab.ORDERS, "طلباتي", Icons.Filled.ReceiptLong, Icons.Outlined.ReceiptLong, "nav_orders"),
     BottomNavItem(BottomTab.CART, "السلة", Icons.Filled.ShoppingBag, Icons.Outlined.ShoppingBag, "nav_cart"),
     BottomNavItem(BottomTab.PROFILE, "حسابي", Icons.Filled.Person, Icons.Outlined.PersonOutline, "nav_profile")
