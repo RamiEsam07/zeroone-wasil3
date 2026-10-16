@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,6 +46,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +73,7 @@ import com.example.ui.components.ProductCard
 import com.example.ui.components.StoreCard
 import com.example.ui.theme.WasilPrimary
 import com.example.ui.theme.WasilSecondary
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
@@ -81,6 +88,21 @@ fun HomeScreen(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var activePromoIndex by remember { mutableIntStateOf(0) }
+    val promos = remember {
+        listOf(
+            Triple("كل طلباتك تصلك لباب بيتك", "من أفضل المطاعم والمتاجر القريبة منك", "توصيل سريع وموثوق ⚡"),
+            Triple("جوعان؟ وصّلها ليك", "اختار وجبتك وخلي الباقي علينا", "طعمك المفضل أقرب 🍔"),
+            Triple("طلبك علينا أسهل", "تصفح المتاجر واطلب بالطريقة البتناسبك", "اكتشف عروض وصّل 🧡")
+        )
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(4500)
+            activePromoIndex = (activePromoIndex + 1) % promos.size
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -94,6 +116,26 @@ fun HomeScreen(
                     order = activeOrder,
                     onTrackClick = { onTrackOrderClick(activeOrder.id) },
                     modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        // Welcome heading
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = "أهلاً بيك في وصّل 👋",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = WasilPrimary
+                )
+                Text(
+                    text = "شنو نفسك نوصّل ليك اليوم؟",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -160,33 +202,36 @@ fun HomeScreen(
                         )
                 )
 
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(18.dp)
-                ) {
-                    Surface(
-                        color = WasilSecondary,
-                        shape = RoundedCornerShape(6.dp)
+                Crossfade(targetState = activePromoIndex, label = "promo_banner_transition") { promoIndex ->
+                    val promo = promos[promoIndex]
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(18.dp)
                     ) {
+                        Surface(
+                            color = WasilSecondary,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = promo.third,
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "توصيل سريع وموثوق ⚡",
+                            text = promo.first,
                             color = Color.White,
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold)
+                        )
+                        Text(
+                            text = promo.second,
+                            color = Color.White.copy(alpha = 0.92f),
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "كل طلباتك تصلك لباب بيتك",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold)
-                    )
-                    Text(
-                        text = "من أفضل مطاعم ومتاجر العاصمة والمدن",
-                        color = Color.White.copy(alpha = 0.9f),
-                        style = MaterialTheme.typography.bodySmall
-                    )
                 }
             }
         }
