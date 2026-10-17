@@ -1,5 +1,13 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
+plugins {
+  alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.secrets)
+  alias(libs.plugins.google.services)
+}
+
 val supabaseLocalProperties = java.util.Properties().apply {
   val localPropertiesFile = rootProject.file("local.properties")
   if (localPropertiesFile.exists()) {
@@ -8,14 +16,6 @@ val supabaseLocalProperties = java.util.Properties().apply {
 }
 val supabaseUrl = supabaseLocalProperties.getProperty("SUPABASE_URL", "")
 val supabasePublishableKey = supabaseLocalProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "")
-
-plugins {
-  alias(libs.plugins.android.application)
-  alias(libs.plugins.kotlin.compose)
-  alias(libs.plugins.google.devtools.ksp)
-  alias(libs.plugins.secrets)
-  alias(libs.plugins.google.services)
-}
 
 android {
   namespace = "com.example"
