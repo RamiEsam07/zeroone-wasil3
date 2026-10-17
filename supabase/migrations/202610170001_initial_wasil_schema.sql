@@ -303,18 +303,10 @@ using (
   or public.is_wasil_admin()
 );
 
-create policy "orders_customer_insert" on public.orders
-for insert to authenticated
-with check (
-  customer_id = (select auth.uid())
-  and public.current_wasil_role() = 'customer'
-  and driver_id is null
-  and status = 'placed'
-  and exists (select 1 from public.addresses a where a.id = address_id and a.customer_id = (select auth.uid()))
-);
-
--- Status changes/driver assignment must be implemented through server-validated RPCs in the next phase.
--- No client update policy is intentionally granted on orders yet.
+-- Direct client writes to orders and order_items are intentionally disabled.
+-- A trusted RPC must calculate authoritative prices from products, validate address/store,
+-- decrement stock transactionally, and insert the order and items atomically.
+-- Status changes/driver assignment must also use server-validated RPCs.
 
 create policy "order_items_read_participants" on public.order_items
 for select to authenticated
@@ -328,15 +320,6 @@ using (
         or public.owns_wasil_store(o.store_id)
         or public.is_wasil_admin()
       )
-  )
-);
-
-create policy "order_items_customer_insert" on public.order_items
-for insert to authenticated
-with check (
-  exists (
-    select 1 from public.orders o
-    where o.id = order_id and o.customer_id = (select auth.uid()) and o.status = 'placed'
   )
 );
 
@@ -358,8 +341,6 @@ with check (profile_id = (select auth.uid()) and public.current_wasil_role() = '
 grant select on public.categories, public.stores, public.products to anon, authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.addresses to authenticated;
-grant select, insert on public.orders to authenticated;
-grant select, insert on public.order_items to authenticated;
 grant select, insert, update on public.driver_profiles to authenticated;
 grant insert, update, delete on public.stores, public.products to authenticated;
 
