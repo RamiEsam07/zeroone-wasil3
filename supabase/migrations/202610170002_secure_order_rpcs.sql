@@ -190,7 +190,7 @@ $$;
 revoke all on function public.wasil_accept_order(uuid) from public, anon;
 grant execute on function public.wasil_accept_order(uuid) to authenticated;
 
--- Merchant-only status transitions. A merchant cannot assign drivers or mark an order delivered.
+-- Merchant-only forward status transitions. Cancellation is deliberately excluded until a stock-restoration RPC is implemented. A merchant cannot assign drivers or mark an order delivered.
 create or replace function public.wasil_merchant_update_order_status(
   p_order_id uuid,
   p_next_status public.wasil_order_status
@@ -228,9 +228,9 @@ begin
   end if;
 
   if not (
-    (v_current = 'placed' and p_next_status in ('confirmed', 'cancelled'))
-    or (v_current = 'confirmed' and p_next_status in ('preparing', 'cancelled'))
-    or (v_current = 'preparing' and p_next_status in ('ready_for_pickup', 'cancelled'))
+    (v_current = 'placed' and p_next_status = 'confirmed')
+    or (v_current = 'confirmed' and p_next_status = 'preparing')
+    or (v_current = 'preparing' and p_next_status = 'ready_for_pickup')
   ) then
     raise exception 'Invalid merchant order status transition' using errcode = '22023';
   end if;
