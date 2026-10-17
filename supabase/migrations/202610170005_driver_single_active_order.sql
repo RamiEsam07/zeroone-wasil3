@@ -5,6 +5,7 @@
 begin;
 
 -- Availability is controlled by trusted RPCs, not direct client UPDATEs.
+revoke insert on public.driver_profiles from authenticated;
 revoke update on public.driver_profiles from authenticated;
 grant update (vehicle_type, latitude, longitude, last_location_at)
   on public.driver_profiles to authenticated;
