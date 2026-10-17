@@ -1,3 +1,13 @@
+## Authentication decision: Google first, phone later
+
+- First launch sign-in method: Google via native Android Credential Manager, exchanging the Google ID token for a Supabase Auth session.
+- Phone/SMS OTP is deferred. Do not present it as an available sign-in option in the current release.
+- Each Android application needs its own Android OAuth client in Google Cloud using that app's exact applicationId and SHA-1 signing fingerprint (debug and release fingerprints differ). Create a Web OAuth client too; configure the Web client ID and secret in Supabase Auth > Providers > Google. The Web client ID is used by the native Credential Manager request.
+- Add `GOOGLE_WEB_CLIENT_ID` to local `local.properties` only. Do not commit OAuth client secrets. The Supabase publishable key is safe for client apps; service-role/secret keys are never safe in Android.
+- Add the Google provider's redirect/configuration and verify the ID-token exchange, session persistence/refresh, sign-out, and role-based access before calling Google login complete.
+- New Google accounts receive the default customer role. Merchant, driver, and admin access must be granted only through a trusted approval/provisioning process, never from client-provided metadata.
+- Required provider setup: https://supabase.com/docs/guides/auth/social-login/auth-google?platform=android
+
 # WASIL Supabase setup (Android)
 
 1. Open the project in Android Studio.
