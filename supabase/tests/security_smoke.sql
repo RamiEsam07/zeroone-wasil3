@@ -63,6 +63,25 @@ begin
   end if;
 
   if not exists (
+    select 1 from public.platform_settings
+    where id = true
+      and commission_rate_percent = 0
+      and base_delivery_fee = 0
+      and fee_per_km = 0
+      and tax_rate_percent = 0
+      and auto_assign_drivers = false
+  ) then
+    raise exception 'Platform settings must start with safe unconfigured pricing and disabled auto-assignment';
+  end if;
+
+  if (
+    select column_default from information_schema.columns
+    where table_schema = 'public' and table_name = 'stores' and column_name = 'is_active'
+  ) not like 'false%' then
+    raise exception 'New stores must default to pending/inactive approval';
+  end if;
+
+  if not exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'orders'
       and column_name in ('customer_name_snapshot', 'customer_phone_snapshot')
