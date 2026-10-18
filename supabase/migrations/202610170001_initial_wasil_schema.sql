@@ -145,6 +145,8 @@ create table public.orders (
   driver_release_reason text,
   placed_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  assigned_at timestamptz,
+  picked_up_at timestamptz,
   delivered_at timestamptz,
   constraint orders_customer_idempotency_key_unique unique (customer_id, idempotency_key)
 );
