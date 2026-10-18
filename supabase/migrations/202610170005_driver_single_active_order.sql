@@ -137,6 +137,85 @@ $$;
 revoke all on function public.wasil_accept_order(uuid) from public, anon;
 grant execute on function public.wasil_accept_order(uuid) to authenticated;
 
+-- Return only safe, pickup-stage fields for unassigned drivers. Contact and delivery-address
+-- details remain protected by the orders/addresses RLS policies until the order is assigned.
+create or replace function public.wasil_list_available_orders()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_uid uuid := auth.uid();
+  v_result jsonb;
+begin
+  if v_uid is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+  if not public.current_wasil_account_active()
+     or public.current_wasil_role() is distinct from 'driver'::public.wasil_role then
+    raise exception 'Active driver account required' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1 from public.driver_profiles d
+    where d.profile_id = v_uid and d.is_available
+  ) then
+    return '[]'::jsonb;
+  end if;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', o.id,
+        'order_number', o.order_number,
+        'store_id', o.store_id,
+        'status', o.status,
+        'payment_method', o.payment_method,
+        'currency', o.currency,
+        'subtotal', o.subtotal,
+        'delivery_fee', o.delivery_fee,
+        'service_fee', o.service_fee,
+        'total', o.total,
+        'placed_at', o.placed_at,
+        'store', jsonb_build_object(
+          'id', s.id,
+          'name_ar', s.name_ar,
+          'name_en', s.name_en,
+          'phone', s.phone,
+          'address_text', s.address_text,
+          'latitude', s.latitude,
+          'longitude', s.longitude
+        ),
+        'order_items', coalesce((
+          select jsonb_agg(jsonb_build_object(
+            'id', oi.id,
+            'product_name_snapshot', oi.product_name_snapshot,
+            'quantity', oi.quantity,
+            'unit_price', oi.unit_price,
+            'special_instructions', oi.special_instructions
+          ) order by oi.id)
+          from public.order_items oi
+          where oi.order_id = o.id
+        ), '[]'::jsonb)
+      ) order by o.placed_at
+    ),
+    '[]'::jsonb
+  )
+  into v_result
+  from public.orders o
+  join public.stores s on s.id = o.store_id
+  where o.status = 'ready_for_pickup'
+    and o.driver_id is null
+    and s.is_active
+    and s.is_open;
+
+  return v_result;
+end;
+$;
+
+revoke all on function public.wasil_list_available_orders() from public, anon;
+grant execute on function public.wasil_list_available_orders() to authenticated;
+
 commit;
 
 -- Required validation:
