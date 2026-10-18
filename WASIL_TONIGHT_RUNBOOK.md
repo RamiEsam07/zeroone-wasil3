@@ -29,6 +29,8 @@ This document is a practical checklist, not a claim that tests have already pass
 
 ## Required database test matrix
 
+The new GitHub Actions workflow `Supabase migration smoke check` applies all seven migrations to a disposable PostgreSQL database and runs basic RLS/grant smoke tests. A passing workflow is necessary but not sufficient; Supabase-specific Auth behavior and concurrency still need runtime tests.
+
 | Scenario | Expected result |
 |---|---|
 | Anonymous user reads active catalog | Allowed only for active/open catalog rows per policies |
