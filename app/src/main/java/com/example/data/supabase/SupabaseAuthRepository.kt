@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -66,6 +67,24 @@ class SupabaseAuthRepository(
             }
         }
     }
+
+    /** Reads the server-owned profile role; client metadata is never trusted for authorization. */
+    suspend fun getAccountAccess(session: SupabaseSession): Result<SupabaseAccountAccess> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val response = SupabaseRestClient(projectUrl, publishableKey).rest(
+                    tableOrRpcPath = "rest/v1/profiles?select=role,is_active&id=eq." + session.userId,
+                    accessToken = session.accessToken,
+                ).getOrThrow()
+                val rows = JSONArray(response)
+                check(rows.length() > 0) { "لم يتم العثور على ملف الحساب في قاعدة البيانات." }
+                val profile = rows.getJSONObject(0)
+                SupabaseAccountAccess(
+                    role = profile.optString("role"),
+                    isActive = profile.optBoolean("is_active", false),
+                )
+            }
+        }
 
     suspend fun signOut(session: SupabaseSession?): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
