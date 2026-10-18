@@ -24,6 +24,10 @@ begin
     raise exception 'Authentication required' using errcode = '28000';
   end if;
 
+  if not public.current_wasil_account_active() then
+    raise exception 'Account is inactive' using errcode = '42501';
+  end if;
+
   if public.current_wasil_role() is distinct from 'driver'::public.wasil_role then
     raise exception 'Only driver accounts can change driver availability' using errcode = '42501';
   end if;
@@ -75,6 +79,10 @@ declare
 begin
   if v_uid is null then
     raise exception 'Authentication required' using errcode = '28000';
+  end if;
+
+  if not public.current_wasil_account_active() then
+    raise exception 'Account is inactive' using errcode = '42501';
   end if;
 
   if public.current_wasil_role() is distinct from 'driver'::public.wasil_role then
