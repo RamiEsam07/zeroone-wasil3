@@ -148,13 +148,13 @@ begin
   join public.products p on p.id = x.product_id
   where p.store_id = p_store_id and p.is_active and p.is_available and p.stock_quantity >= x.quantity;
 
-  if v_subtotal < coalesce(v_store_min_order_amount, 0) then
-    raise exception 'Order subtotal is below the store minimum' using errcode = '22023';
-  end if;
-
   if v_count <> jsonb_array_length(p_items) then
     raise exception 'One or more products are missing, unavailable, out of stock, or belong to another store'
       using errcode = '22023';
+  end if;
+
+  if v_subtotal < coalesce(v_store_min_order_amount, 0) then
+    raise exception 'Order subtotal is below the store minimum' using errcode = '22023';
   end if;
 
   v_delivery_fee := round(greatest(v_settings.base_delivery_fee, coalesce(v_store_delivery_fee, 0))
