@@ -28,6 +28,7 @@ import com.example.ui.screens.WasilLoginScreen
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -240,6 +241,15 @@ fun WasilCustomerApp(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategoryFilter by viewModel.selectedCategoryFilter.collectAsState()
     val checkoutPaymentMethod by viewModel.checkoutPaymentMethod.collectAsState()
+
+    LaunchedEffect(currentScreen) {
+        if (currentScreen is Screen.OrderTracking || currentScreen is Screen.MyOrders || currentScreen is Screen.OrderDetail) {
+            while (true) {
+                viewModel.refreshOrdersNow()
+                delay(15_000)
+            }
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
