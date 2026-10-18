@@ -5,7 +5,7 @@ This document is a practical checklist, not a claim that tests have already pass
 ## Current safety boundary
 
 - Review and corrective commits are isolated on `fix/wasil-foundation-review`; keep `main` unchanged. Do not merge this branch or the foundation PR until code review, SQL validation in a disposable environment, and Android build checks are complete.
-- The customer app now wires Google Auth and a Supabase-backed API adapter for catalog, addresses, order creation/history and cancellation. This is code-wired but not runtime-verified. Merchant/driver/admin app integrations remain separate work.
+- All four role-specific Android apps (customer, merchant/store, driver, admin) now have Supabase-backed login gates and role-specific repository wiring on isolated review branches. Their Android debug builds have passed CI on the latest role-app commits; real Google OAuth/Supabase runtime flows still require provider configuration and device testing.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
@@ -30,7 +30,7 @@ This document is a practical checklist, not a claim that tests have already pass
 6. Bootstrap the first admin through a trusted SQL Editor/service-role workflow. A normal Google sign-up creates a customer profile only.
 7. To onboard a merchant or driver, first create their Supabase Auth/profile account, then use the admin provisioning RPC to assign the approved role and activate the account. The driver profile is created by trusted provisioning; driver clients cannot create it themselves.
 8. New stores and products remain inactive until admin approval/activation. Merchants may prepare store/product details, but those records must not appear in the customer catalog until the moderation flags are enabled by the admin RPC.
-6. Verify merchant-created stores and products are inactive by default; only admin RPCs may activate them. Merchants may edit product content, stock and availability but cannot bypass product approval.
+9. Verify merchant-created stores and products are inactive by default; only admin RPCs may activate them. Merchants may edit product content, stock and availability but cannot bypass product approval.
 
 ## Required database test matrix
 
