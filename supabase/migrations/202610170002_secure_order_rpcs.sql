@@ -223,6 +223,114 @@ $$;
 revoke all on function public.wasil_accept_order(uuid) from public, anon;
 grant execute on function public.wasil_accept_order(uuid) to authenticated;
 
+-- Optional automatic assignment: choose the nearest available active driver,
+-- using vehicle type as a deterministic tie-breaker. If location data is absent,
+-- prefer the most recently reported driver location and leave the order unassigned
+-- when no eligible driver exists.
+create or replace function public.wasil_auto_assign_ready_order(p_order_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $wasil_auto_assign_ready_order$
+declare
+  v_uid uuid := auth.uid();
+  v_role public.wasil_role;
+  v_store_id uuid;
+  v_order_status public.wasil_order_status;
+  v_existing_driver uuid;
+  v_store_lat double precision;
+  v_store_lon double precision;
+  v_driver_id uuid;
+begin
+  if v_uid is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+  if not public.current_wasil_account_active() then
+    raise exception 'Account is inactive' using errcode = '42501';
+  end if;
+  v_role := public.current_wasil_role();
+  if v_role not in ('merchant'::public.wasil_role, 'admin'::public.wasil_role) then
+    raise exception 'Merchant or admin account required' using errcode = '42501';
+  end if;
+
+  select o.store_id, o.status, o.driver_id, s.latitude, s.longitude
+    into v_store_id, v_order_status, v_existing_driver, v_store_lat, v_store_lon
+  from public.orders o
+  join public.stores s on s.id = o.store_id
+  where o.id = p_order_id
+  for update of o;
+
+  if not found or v_order_status <> 'ready_for_pickup' or v_existing_driver is not null then
+    return false;
+  end if;
+  if v_role = 'merchant'::public.wasil_role and not public.owns_wasil_store(v_store_id) then
+    raise exception 'This order does not belong to your store' using errcode = '42501';
+  end if;
+  if not coalesce((select ps.auto_assign_drivers from public.platform_settings ps where ps.id = true), false) then
+    return false;
+  end if;
+
+  select d.profile_id into v_driver_id
+  from public.driver_profiles d
+  join public.profiles p on p.id = d.profile_id
+  where p.role = 'driver'::public.wasil_role
+    and p.is_active
+    and d.is_available
+    and not exists (
+      select 1 from public.orders active_order
+      where active_order.driver_id = d.profile_id
+        and active_order.status in ('driver_assigned', 'picked_up', 'on_the_way')
+    )
+  order by
+    case
+      when v_store_lat is not null and v_store_lon is not null
+       and d.latitude is not null and d.longitude is not null
+      then acos(least(1.0, greatest(-1.0,
+        sin(radians(v_store_lat)) * sin(radians(d.latitude))
+        + cos(radians(v_store_lat)) * cos(radians(d.latitude))
+        * cos(radians(d.longitude - v_store_lon))
+      ))) * 6371.0
+      else null
+    end asc nulls last,
+    case d.vehicle_type
+      when 'motorcycle' then 0
+      when 'car' then 1
+      when 'van' then 2
+      when 'bicycle' then 3
+      else 4
+    end,
+    d.last_location_at desc nulls last,
+    d.created_at
+  limit 1
+  for update of d skip locked;
+
+  if v_driver_id is null then
+    return false;
+  end if;
+
+  update public.orders
+     set driver_id = v_driver_id,
+         status = 'driver_assigned',
+         assigned_at = now(),
+         updated_at = now()
+   where id = p_order_id
+     and driver_id is null
+     and status = 'ready_for_pickup';
+  if not found then
+    return false;
+  end if;
+
+  update public.driver_profiles
+     set is_available = false, updated_at = now()
+   where profile_id = v_driver_id;
+  return true;
+end;
+$wasil_auto_assign_ready_order$;
+
+revoke all on function public.wasil_auto_assign_ready_order(uuid) from public, anon;
+grant execute on function public.wasil_auto_assign_ready_order(uuid) to authenticated;
+
 -- Merchant-only forward status transitions. Cancellation is deliberately excluded until a stock-restoration RPC is implemented. A merchant cannot assign drivers or mark an order delivered.
 create or replace function public.wasil_merchant_update_order_status(
   p_order_id uuid,
@@ -275,6 +383,10 @@ begin
   update public.orders
     set status = p_next_status, updated_at = now()
     where id = p_order_id;
+
+  if p_next_status = 'ready_for_pickup'::public.wasil_order_status then
+    perform public.wasil_auto_assign_ready_order(p_order_id);
+  end if;
 
   return true;
 end;
