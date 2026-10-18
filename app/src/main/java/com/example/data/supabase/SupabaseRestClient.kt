@@ -59,7 +59,17 @@ class SupabaseRestClient(
         accessToken: String? = null,
     ): Result<String> {
         val normalizedPath = tableOrRpcPath.trimStart('/')
-        require(normalizedPath.startsWith("rest/v1/")) { "Use a PostgREST path under rest/v1/" }
+        val endpointPath = normalizedPath.substringBefore('?')
+        require(normalizedPath.startsWith("rest/v1/")) {
+            "Use a PostgREST path under rest/v1/"
+        }
+        require(
+            !endpointPath.contains('\\') &&
+                endpointPath.split('/').none { it == "." || it == ".." } &&
+                !Regex("(?i)%2e|%2f|%5c").containsMatchIn(endpointPath)
+        ) {
+            "PostgREST path must not contain path traversal segments"
+        }
         val parsedBody = body?.let { JSONObject(it) }
         return request(normalizedPath, method, parsedBody, accessToken)
     }
