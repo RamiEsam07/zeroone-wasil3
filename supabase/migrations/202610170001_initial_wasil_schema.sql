@@ -216,7 +216,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   update public.profiles
      set email = new.email,
@@ -224,7 +224,7 @@ begin
    where id = new.id;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists on_auth_user_email_updated_wasil on auth.users;
 create trigger on_auth_user_email_updated_wasil
