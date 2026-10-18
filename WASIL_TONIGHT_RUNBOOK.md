@@ -22,6 +22,7 @@ This document is a practical checklist, not a claim that tests have already pass
    - `202610170004_least_privilege_grants.sql`
    - `202610170005_driver_single_active_order.sql`
    - `202610170006_admin_provisioning.sql`
+   - `202610170007_address_default_rpc.sql`
 3. Stop on the first SQL error; do not continue to later migrations.
 4. Seed test users for customer, merchant, driver, and admin using a trusted administrative path. Do not make role assignment available to normal clients.
 5. Confirm RLS and table/function privileges with each role before any real customer data is entered.
