@@ -11,7 +11,7 @@ This is the current source of truth for the review branch. It separates code cha
 - **main is unchanged; nothing has been merged.**
 - SQL migrations are drafts and have not been applied to the live Supabase project.
 - No Supabase secret/service-role key is stored in Android code or committed configuration.
-- The customer app is reviewed here. Isolated review branches also contain Google/Supabase role gates and Supabase data/RPC wiring for merchant (`zeroone-wasil`), driver (`zeroone-wasil4`) and admin (`zeoone---wasil`). Those role-specific branches remain separate and must not be merged until their latest builds and end-to-end flows are reviewed.
+- The customer app is reviewed here. Isolated review branches also contain Google/Supabase role gates and Supabase data/RPC wiring for merchant (`zeroone-wasil`), driver (`zeroone-wasil4`) and admin (`zeoone---wasil`). All four latest debug builds have passed CI on their current review commits; the repositories remain separate and no changes are merged.
 
 ## Implemented in code — not yet fully runtime-verified
 
@@ -25,9 +25,9 @@ This is the current source of truth for the review branch. It separates code cha
 | Orders | Server RPC creates orders with authoritative prices, inventory locking, snapshots and idempotency. Delivery fee uses the store fee plus configured server-side rules; service fee and tax currently default to zero. The checkout UI must be verified against non-zero configured fees before those rates are enabled. | Validate fee policy, stock races, totals and rollback in disposable data. |
 | Retry safety | Client retains an idempotency key for retries of the same order payload; SQL RPC serializes duplicate requests for the same customer/key. | Prove retry and concurrency behavior with tests. |
 | Cancellation | Server RPC validates allowed states and restores stock in the same transaction. | Test allowed/denied roles and repeated cancellation. |
-| Tracking | Customer order/history views poll order state every 15 seconds while visible; demo-only status simulation is hidden in the live customer app. | Test with merchant/driver updates and decide on Supabase Realtime/push notifications. |
+| Tracking and dispatch | Customer order/history views poll order state every 15 seconds. Driver app requests foreground location only while available or on an active delivery and publishes coordinates through a server-timestamped RPC. Merchant onboarding/profile accepts store coordinates; auto-assignment requires fresh driver coordinates, store coordinates, availability and radius. | Verify location permissions and actual coordinates on a device; test dispatch with multiple drivers and decide on Supabase Realtime/push notifications. |
 | Admin setup | RPCs provision role/activation and approve/deactivate stores; address-default RPC and least-privilege grants are included. | Bootstrap the first admin through the guarded `supabase/bootstrap_first_admin.sql.example` template in the trusted Supabase SQL Editor after the user has signed in once with Google. Test all permissions. |
-| CI | Android debug-build workflow and disposable PostgreSQL migration/security smoke workflow are present. | SQL smoke passed on the reviewed code-focused commit; a newer documentation/config-ignore commit triggered another CI run. Check the latest run before treating the branch as green. CI does not replace Supabase-specific tests. |
+| CI | Android debug-build workflow and disposable PostgreSQL migration/security smoke workflow are present. | Android builds passed for customer (`720ed937`), merchant (`5b43a9f4`), driver (`2d931d36`) and admin (`2ed04148`). The migration/security smoke workflow passed on customer commit `720ed937`, including role/grant/RLS checks, order idempotency, pricing/minimum enforcement, default-address selection, nearest-driver assignment and server-timestamped driver location. These are CI checks only, not live Supabase or device-level tests. |
 
 ## Database migration order
 
@@ -51,10 +51,10 @@ Apply these only to a disposable Supabase/PostgreSQL environment first, in order
 
 ## Blockers before merge or launch
 
-- Latest Android build and SQL smoke workflows must complete successfully.
-- Test all seven migrations against disposable Supabase, including role/RLS, order stock races, idempotency, cancellation and driver concurrency.
+- Keep the latest Android build and SQL smoke workflows green after every further code change; the current reviewed commits have passed.
+- Apply all seven migrations to a disposable Supabase project (not the live project) and test role/RLS, order stock races, idempotency, cancellation and driver concurrency; CI currently validates them against a disposable PostgreSQL/Auth test schema.
 - Configure Google OAuth and run end-to-end sign-in/session refresh/sign-out.
 - Test customer catalog, address, order, cancellation and tracking flows against real test records.
 - Review the latest builds for merchant, driver and admin role-app branches and run end-to-end tests for onboarding, store/product approval, driver acceptance/status changes and admin provisioning.
 - Approve the server-side delivery-fee, tax and service-fee policy. Initial platform fee/tax defaults are zero, and the configured store delivery fee is honored. Do not enable non-zero platform fees until checkout displays the same server-calculated quote.
-- Add push notifications/Realtime, driver commission ledger/settlement, location privacy/retention and payment-provider integration as launch requirements. Auto-assignment refuses to assign without store and driver coordinates; the current role apps still need a verified live-location capture/update flow before location-based dispatch can be enabled.
+- Add push notifications/Realtime, driver commission ledger/settlement, location privacy/retention and payment-provider integration as launch requirements. Location capture and server-side update are now wired, but must be tested on real devices before enabling location-based dispatch.
