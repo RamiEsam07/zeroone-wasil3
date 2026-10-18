@@ -5,7 +5,7 @@ This document is a practical checklist, not a claim that tests have already pass
 ## Current safety boundary
 
 - Review and corrective commits are isolated on `fix/wasil-foundation-review`; keep `main` unchanged. Do not merge this branch or the foundation PR until code review, SQL validation in a disposable environment, and Android build checks are complete.
-- The four app PRs are a low-level Supabase foundation; their existing screens and repositories are not yet proven to use Supabase.
+- The customer app now wires Google Auth and a Supabase-backed API adapter for catalog, addresses, order creation/history and cancellation. This is code-wired but not runtime-verified. Merchant/driver/admin app integrations remain separate work.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
@@ -56,7 +56,7 @@ This document is a practical checklist, not a claim that tests have already pass
 1. Add the project's Supabase URL, publishable key, and Google Web OAuth client ID to the customer app's local `local.properties` only; do not commit OAuth secrets.
 2. Sync Gradle and build each of the four apps independently.
 3. Fix compile/configuration errors before connecting screens.
-4. Auth/session code is now present for Google → Supabase; validate it first, then wire one shared contract at a time: catalog → addresses → create order → merchant status → driver accept/status → order history/admin views.
+4. The customer-side contracts for catalog, addresses, create order, order history and cancellation are wired to Supabase. Validate them end-to-end; then integrate merchant status, driver accept/status and admin provisioning in the role-specific app repositories.
 5. Use a real user's access token for authenticated PostgREST/RPC calls. Never treat the publishable key as user authorization.
 6. Confirm session persistence, sign-out, token expiry/refresh, loading/error states, and offline/network failure behavior.
 7. Test on an emulator/device with test accounts and disposable data.
@@ -67,7 +67,7 @@ This document is a practical checklist, not a claim that tests have already pass
 - Validate order idempotency under retry and concurrent duplicate requests; the draft RPC/client key path is implemented but not yet tested.
 - Server-side delivery-fee rules and who receives the fee.
 - Payment-provider integration before enabling electronic payment.
-- Order notifications/realtime behavior and retry strategy.
+- Push notifications and Supabase Realtime remain follow-up work; customer order/history screens currently poll order status every 15 seconds while visible.
 - Driver commission/settlement ledger and limits, if commissions are part of launch.
 - Privacy/retention rules for precise customer/driver location.
 - Automated SQL concurrency tests and successful builds for all four apps.
