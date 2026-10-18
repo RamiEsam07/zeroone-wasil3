@@ -17,8 +17,8 @@ grant update (vehicle_type, latitude, longitude, last_location_at)
   on public.driver_profiles to authenticated;
 
 -- Stores must be approved/activated through a trusted administrative path.
--- A new merchant-created store starts inactive; clients cannot set is_active
--- or change ownership during insert/update.
+-- A new merchant-created store starts inactive. RLS requires owner_id to equal
+-- auth.uid() on insert; ordinary clients cannot change owner_id or set is_active.
 alter table public.stores alter column is_active set default false;
 revoke insert, update on public.stores from authenticated;
 grant insert (owner_id, category_id, name_ar, name_en, description, phone,
