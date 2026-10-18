@@ -57,7 +57,11 @@ class SupabaseAuthRepository(
                 )
                 parseAndSaveSession(response, fallback = saved)
             } catch (error: Exception) {
-                sessionStore.clear()
+                // Preserve the refresh token on transient network/server failures.
+                // Clear it only when Supabase explicitly rejects the refresh credentials.
+                if (error is AuthHttpException && error.statusCode in 400..401) {
+                    sessionStore.clear()
+                }
                 throw error
             }
         }
@@ -102,11 +106,19 @@ class SupabaseAuthRepository(
                         JSONObject(responseText).optString("message").ifBlank { responseText }
                     }
                 } catch (_: Exception) { responseText }
-                throw IOException("Supabase Auth HTTP " + response.code + ": " + (message.ifBlank { response.message }))
+                throw AuthHttpException(
+                    response.code,
+                    "Supabase Auth HTTP " + response.code + ": " + (message.ifBlank { response.message }),
+                )
             }
             return JSONObject(responseText)
         }
     }
+
+    private class AuthHttpException(
+        val statusCode: Int,
+        message: String,
+    ) : IOException(message)
 
     private fun parseAndSaveSession(
         response: JSONObject,
