@@ -62,6 +62,21 @@ begin
     raise exception 'Anonymous users must not read platform settings';
   end if;
 
+  if has_column_privilege('authenticated', 'public.products', 'is_active', 'INSERT')
+     or has_column_privilege('authenticated', 'public.products', 'is_active', 'UPDATE') then
+    raise exception 'Merchants must not directly set product activation';
+  end if;
+
+  if has_column_privilege('authenticated', 'public.stores', 'is_active', 'INSERT')
+     or has_column_privilege('authenticated', 'public.stores', 'is_active', 'UPDATE') then
+    raise exception 'Merchants must not directly set store activation';
+  end if;
+
+  if has_column_privilege('authenticated', 'public.driver_profiles', 'commission_balance', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.driver_profiles', 'is_available', 'UPDATE') then
+    raise exception 'Drivers must not directly set availability or commission balance';
+  end if;
+
   if has_column_privilege('authenticated', 'public.driver_profiles', 'profile_id', 'INSERT')
      or has_column_privilege('authenticated', 'public.driver_profiles', 'vehicle_type', 'INSERT') then
     raise exception 'Driver profile creation must use trusted admin provisioning';
