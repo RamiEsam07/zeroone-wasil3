@@ -161,7 +161,8 @@ $$;
 
 insert into auth.users (id, phone, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000001', '+249900000001', '{}'::jsonb),
-  ('00000000-0000-0000-0000-000000000002', '+249900000002', '{}'::jsonb);
+  ('00000000-0000-0000-0000-000000000002', '+249900000002', '{}'::jsonb),
+  ('00000000-0000-0000-0000-000000000003', '+249900000003', '{}'::jsonb);
 
 insert into public.addresses (
   customer_id, label, address_text, city, area, street, building_number,
@@ -173,16 +174,19 @@ insert into public.addresses (
 update public.profiles
    set role = 'merchant'::public.wasil_role
  where id = '00000000-0000-0000-0000-000000000002';
+update public.profiles
+   set role = 'driver'::public.wasil_role
+ where id = '00000000-0000-0000-0000-000000000003';
 
 insert into public.stores (
   id, owner_id, category_id, name_ar, name_en, phone, address_text,
-  delivery_fee, min_order_amount, is_active, is_open
+  latitude, longitude, delivery_fee, min_order_amount, is_active, is_open
 ) values (
   '10000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000002',
   (select id from public.categories where slug = 'restaurants'),
   'متجر اختبار', 'Smoke Test Store', '+249900000002', 'Test store address',
-  4.50, 15.00, true, true
+  15.5898, 32.5599, 4.50, 15.00, true, true
 );
 
 insert into public.products (
@@ -192,6 +196,14 @@ insert into public.products (
   '10000000-0000-0000-0000-000000000001',
   'منتج اختبار', 10.00, 3, true, true
 );
+
+insert into public.driver_profiles (
+  profile_id, vehicle_type, is_available, latitude, longitude, last_location_at
+) values (
+  '00000000-0000-0000-0000-000000000003', 'motorcycle', true, 15.5900, 32.5600, now()
+);
+
+update public.platform_settings set auto_assign_drivers = true where id = true;
 
 begin;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
@@ -269,6 +281,27 @@ begin
   if v_stock <> 1 then
     raise exception 'Rejected below-minimum order changed stock';
   end if;
+
+  update public.orders set status = 'ready_for_pickup'
+  where id = v_order_id;
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
+  if not public.wasil_auto_assign_ready_order(v_order_id) then
+    raise exception 'Enabled auto-assignment did not assign the eligible nearby driver';
+  end if;
+  if not exists (
+    select 1 from public.orders
+    where id = v_order_id
+      and driver_id = '00000000-0000-0000-0000-000000000003'
+      and status = 'driver_assigned'
+      and assigned_at is not null
+  ) then
+    raise exception 'Auto-assignment did not persist the selected driver and assignment timestamp';
+  end if;
+  if (select is_available from public.driver_profiles
+      where profile_id = '00000000-0000-0000-0000-000000000003') then
+    raise exception 'Auto-assigned driver must become unavailable while handling the order';
+  end if;
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 
   insert into public.addresses (
     customer_id, label, address_text, city, area, street, building_number,
