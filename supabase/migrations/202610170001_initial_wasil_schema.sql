@@ -303,6 +303,11 @@ create policy "profiles_read_self_or_admin" on public.profiles
 for select to authenticated
 using (id = (select auth.uid()) or public.is_wasil_admin());
 
+create policy "profiles_update_admin" on public.profiles
+for update to authenticated
+using (public.is_wasil_admin())
+with check (public.is_wasil_admin());
+
 create policy "profiles_update_self_basic" on public.profiles
 for update to authenticated
 using (id = (select auth.uid()) and public.current_wasil_account_active())
