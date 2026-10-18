@@ -19,11 +19,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class DeliveryRepositoryImpl(
     private val apiService: DeliveryApiService,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
 ) : DeliveryRepository {
+
+    private var pendingOrderSignature: String? = null
+    private var pendingOrderIdempotencyKey: String = UUID.randomUUID().toString()
 
     private val _storesFlow = MutableStateFlow<List<Store>>(emptyList())
     override val storesFlow: StateFlow<List<Store>> = _storesFlow.asStateFlow()
@@ -201,6 +205,19 @@ class DeliveryRepositoryImpl(
             ?: apiService.getAddresses().getOrNull()?.firstOrNull()
             ?: return Result.failure(IllegalStateException("يرجى اختيار عنوان توصيل"))
 
+        val orderSignature = buildString {
+            append(store.id).append('|').append(address.id).append('|').append(paymentMethod.id)
+            append('|').append(customerNotes.ifBlank { currentCart.customerNotes })
+            currentCart.items.forEach { item ->
+                append('|').append(item.product.id).append(':').append(item.quantity)
+                append(':').append(item.specialInstructions)
+            }
+        }
+        if (orderSignature != pendingOrderSignature) {
+            pendingOrderSignature = orderSignature
+            pendingOrderIdempotencyKey = UUID.randomUUID().toString()
+        }
+
         val req = CreateOrderRequest(
             storeId = store.id,
             deliveryAddressId = address.id,
@@ -212,13 +229,16 @@ class DeliveryRepositoryImpl(
                 )
             },
             paymentMethod = paymentMethod,
-            customerNotes = if (customerNotes.isNotBlank()) customerNotes else currentCart.customerNotes
+            customerNotes = if (customerNotes.isNotBlank()) customerNotes else currentCart.customerNotes,
+            idempotencyKey = pendingOrderIdempotencyKey
         )
 
         _isLoadingFlow.value = true
         val result = apiService.createOrder(req)
         result.onSuccess { createdOrder ->
             clearCart()
+            pendingOrderSignature = null
+            pendingOrderIdempotencyKey = UUID.randomUUID().toString()
             _activeOrderFlow.value = createdOrder
             refreshOrders()
         }
