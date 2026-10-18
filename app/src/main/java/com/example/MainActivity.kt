@@ -120,6 +120,7 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
         val access = accessResult.getOrThrow()
         if (!access.isActive || access.role != "customer") {
             authRepository.signOut(candidate)
+            viewModel.clearCustomerData()
             SupabaseSessionProvider.session = null
             session = null
             errorMessage = if (!access.isActive) {
@@ -213,6 +214,7 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
                     scope.launch {
                         authRepository.signOut(session)
                             .onFailure { errorMessage = it.message }
+                        viewModel.clearCustomerData()
                         SupabaseSessionProvider.session = null
                         session = null
                     }
