@@ -26,6 +26,7 @@ create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   role public.wasil_role not null default 'customer',
   full_name text,
+  email text,
   phone text,
   avatar_url text,
   is_active boolean not null default true,
@@ -192,12 +193,13 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, role, phone, full_name)
+  insert into public.profiles (id, role, phone, full_name, email)
   values (
     new.id,
     'customer',
     new.phone,
-    nullif(new.raw_user_meta_data ->> 'full_name', '')
+    nullif(new.raw_user_meta_data ->> 'full_name', ''),
+    new.email
   )
   on conflict (id) do nothing;
   return new;
@@ -208,6 +210,28 @@ drop trigger if exists on_auth_user_created_wasil on auth.users;
 create trigger on_auth_user_created_wasil
 after insert on auth.users
 for each row execute procedure public.handle_new_auth_user();
+
+create or replace function public.sync_auth_user_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  update public.profiles
+     set email = new.email,
+         updated_at = now()
+   where id = new.id;
+  return new;
+end;
+$;
+
+drop trigger if exists on_auth_user_email_updated_wasil on auth.users;
+create trigger on_auth_user_email_updated_wasil
+after update of email on auth.users
+for each row
+when (old.email is distinct from new.email)
+execute procedure public.sync_auth_user_email();
 
 create or replace function public.set_updated_at()
 returns trigger
