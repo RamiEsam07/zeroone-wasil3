@@ -212,7 +212,12 @@ language sql
 stable
 security definer
 set search_path = ''
-as $PLACEHOLDER
+as $$
+  select coalesce(
+    (select p.is_active from public.profiles p where p.id = (select auth.uid())),
+    false
+  )
+$$;
 
 create or replace function public.is_wasil_admin()
 returns boolean
@@ -231,7 +236,14 @@ language sql
 stable
 security definer
 set search_path = ''
-as $PLACEHOLDER
+as $$
+  select exists (
+    select 1 from public.stores s
+    where s.id = target_store_id
+      and s.owner_id = (select auth.uid())
+      and public.current_wasil_account_active()
+  )
+$$;
 
 -- Limit helper execution to the roles whose RLS policies need these functions.
 -- Public catalog policies evaluate is_wasil_admin/owns_wasil_store for anon users,
