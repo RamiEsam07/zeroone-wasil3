@@ -166,6 +166,52 @@ $$;
 revoke all on function public.wasil_driver_update_order_status(uuid, public.wasil_order_status) from public, anon;
 grant execute on function public.wasil_driver_update_order_status(uuid, public.wasil_order_status) to authenticated;
 
+create or replace function public.wasil_set_default_address(p_address_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $wasil_set_default_address$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+  if not public.current_wasil_account_active()
+     or public.current_wasil_role() <> 'customer'::public.wasil_role then
+    raise exception 'Active customer account required' using errcode = '42501';
+  end if;
+
+  perform 1
+  from public.addresses a
+  where a.id = p_address_id
+    and a.customer_id = v_uid
+  for update;
+
+  if not found then
+    raise exception 'Address not found or not owned by current customer' using errcode = '42501';
+  end if;
+
+  update public.addresses
+     set is_default = false,
+         updated_at = now()
+   where customer_id = v_uid
+     and is_default;
+
+  update public.addresses
+     set is_default = true,
+         updated_at = now()
+   where id = p_address_id
+     and customer_id = v_uid;
+
+  return true;
+end;
+$wasil_set_default_address$;
+
+revoke all on function public.wasil_set_default_address(uuid) from public, anon;
+grant execute on function public.wasil_set_default_address(uuid) to authenticated;
+
 commit;
 
 -- Validation checklist:
