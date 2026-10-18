@@ -226,7 +226,8 @@ stable
 security definer
 set search_path = ''
 as $$
-  select coalesce(public.current_wasil_role() = 'admin'::public.wasil_role, false)
+  select public.current_wasil_account_active()
+     and coalesce(public.current_wasil_role() = 'admin'::public.wasil_role, false)
 $$;
 
 create or replace function public.owns_wasil_store(target_store_id uuid)
@@ -238,7 +239,9 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.stores s
-    where s.id = target_store_id and s.owner_id = (select auth.uid())
+    where s.id = target_store_id
+      and s.owner_id = (select auth.uid())
+      and public.current_wasil_account_active()
   )
 $$;
 
@@ -258,8 +261,12 @@ using (id = (select auth.uid()) or public.is_wasil_admin());
 
 create policy "profiles_update_self_basic" on public.profiles
 for update to authenticated
-using (id = (select auth.uid()))
-with check (id = (select auth.uid()) and role = public.current_wasil_role());
+using (id = (select auth.uid()) and public.current_wasil_account_active())
+with check (
+  id = (select auth.uid())
+  and role = public.current_wasil_role()
+  and public.current_wasil_account_active()
+);
 
 -- Public catalog is read-only to anonymous and authenticated users.
 create policy "categories_read_active" on public.categories
@@ -272,12 +279,22 @@ using ((is_active and is_open) or owner_id = (select auth.uid()) or public.is_wa
 
 create policy "stores_owner_insert" on public.stores
 for insert to authenticated
-with check (owner_id = (select auth.uid()) and public.current_wasil_role() = 'merchant');
+with check (
+  owner_id = (select auth.uid())
+  and public.current_wasil_role() = 'merchant'
+  and public.current_wasil_account_active()
+);
 
 create policy "stores_owner_update" on public.stores
 for update to authenticated
-using (owner_id = (select auth.uid()) or public.is_wasil_admin())
-with check (owner_id = (select auth.uid()) or public.is_wasil_admin());
+using (
+  (owner_id = (select auth.uid()) and public.current_wasil_account_active())
+  or public.is_wasil_admin()
+)
+with check (
+  (owner_id = (select auth.uid()) and public.current_wasil_account_active())
+  or public.is_wasil_admin()
+);
 
 create policy "products_read_available" on public.products
 for select to anon, authenticated
@@ -291,7 +308,11 @@ using (
 
 create policy "products_owner_insert" on public.products
 for insert to authenticated
-with check (public.owns_wasil_store(store_id) and public.current_wasil_role() = 'merchant');
+with check (
+  public.owns_wasil_store(store_id)
+  and public.current_wasil_role() = 'merchant'
+  and public.current_wasil_account_active()
+);
 
 create policy "products_owner_update" on public.products
 for update to authenticated
@@ -305,8 +326,14 @@ using (public.owns_wasil_store(store_id) or public.is_wasil_admin());
 -- Addresses are private to their owner.
 create policy "addresses_owner_all" on public.addresses
 for all to authenticated
-using (customer_id = (select auth.uid()) or public.is_wasil_admin())
-with check (customer_id = (select auth.uid()) or public.is_wasil_admin());
+using (
+  (customer_id = (select auth.uid()) and public.current_wasil_account_active())
+  or public.is_wasil_admin()
+)
+with check (
+  (customer_id = (select auth.uid()) and public.current_wasil_account_active())
+  or public.is_wasil_admin()
+);
 
 -- Customers can create/read their own orders. Merchants see orders for their own stores.
 create policy "orders_read_participants" on public.orders
@@ -345,12 +372,24 @@ using (profile_id = (select auth.uid()) or public.is_wasil_admin());
 
 create policy "driver_profile_insert_self" on public.driver_profiles
 for insert to authenticated
-with check (profile_id = (select auth.uid()) and public.current_wasil_role() = 'driver');
+with check (
+  profile_id = (select auth.uid())
+  and public.current_wasil_role() = 'driver'
+  and public.current_wasil_account_active()
+);
 
 create policy "driver_profile_update_self" on public.driver_profiles
 for update to authenticated
-using (profile_id = (select auth.uid()) and public.current_wasil_role() = 'driver')
-with check (profile_id = (select auth.uid()) and public.current_wasil_role() = 'driver');
+using (
+  profile_id = (select auth.uid())
+  and public.current_wasil_role() = 'driver'
+  and public.current_wasil_account_active()
+)
+with check (
+  profile_id = (select auth.uid())
+  and public.current_wasil_role() = 'driver'
+  and public.current_wasil_account_active()
+);
 
 -- Grant only the table operations used by the policies; RLS still controls row access.
 grant select on public.categories, public.stores, public.products to anon, authenticated;
