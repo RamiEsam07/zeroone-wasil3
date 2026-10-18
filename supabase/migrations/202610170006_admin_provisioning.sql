@@ -469,6 +469,26 @@ begin
     raise exception 'One or more settings are outside allowed ranges' using errcode = '22023';
   end if;
 
+  if coalesce((p_settings->>'auto_assign_drivers')::boolean, false)
+     and (
+       not exists (
+         select 1 from public.stores s
+         where s.is_active and s.latitude is not null and s.longitude is not null
+       )
+       or not exists (
+         select 1
+         from public.driver_profiles d
+         join public.profiles p on p.id = d.profile_id
+         where p.role = 'driver'::public.wasil_role
+           and p.is_active
+           and d.latitude is not null
+           and d.longitude is not null
+       )
+     ) then
+    raise exception 'Auto-assignment requires at least one active store and active driver with coordinates. Keep it disabled until location data is configured.'
+      using errcode = '22023';
+  end if;
+
   update public.platform_settings
      set commission_rate_percent = (p_settings->>'commission_rate_percent')::numeric,
          base_delivery_fee = (p_settings->>'base_delivery_fee')::numeric,
