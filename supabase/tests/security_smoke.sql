@@ -117,6 +117,18 @@ begin
   ) then
     raise exception 'Product admin activation column is missing';
   end if;
+
+  if has_column_privilege('authenticated', 'public.products', 'is_active', 'INSERT')
+     or has_column_privilege('authenticated', 'public.products', 'is_active', 'UPDATE') then
+    raise exception 'Merchants must not set or change the product moderation flag';
+  end if;
+
+  if (
+    select column_default from information_schema.columns
+    where table_schema = 'public' and table_name = 'products' and column_name = 'is_active'
+  ) not like 'false%' then
+    raise exception 'New products must remain inactive until admin approval';
+  end if;
 end;
 $$;
 
