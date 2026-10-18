@@ -12,7 +12,7 @@ grant update (full_name, phone, avatar_url) on public.profiles to authenticated;
 revoke all on public.driver_profiles from authenticated;
 revoke insert (profile_id, vehicle_type) on public.driver_profiles from authenticated;
 grant select on public.driver_profiles to authenticated;
-grant update (vehicle_type, latitude, longitude, last_location_at)
+grant update (vehicle_type)
   on public.driver_profiles to authenticated;
 
 -- Merchants may maintain product content, stock and availability, but only the
