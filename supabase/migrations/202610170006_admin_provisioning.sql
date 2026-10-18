@@ -167,7 +167,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $admin_assign_driver$
 declare
   v_uid uuid := auth.uid();
   v_status public.wasil_order_status;
@@ -222,7 +222,7 @@ begin
    where profile_id = p_driver_id;
   return true;
 end;
-$;
+$admin_assign_driver$;
 
 revoke all on function public.wasil_admin_assign_driver(uuid, uuid) from public, anon;
 grant execute on function public.wasil_admin_assign_driver(uuid, uuid) to authenticated;
@@ -235,7 +235,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $admin_driver_availability$
 begin
   if auth.uid() is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -268,7 +268,7 @@ begin
    where profile_id = p_driver_id;
   return true;
 end;
-$;
+$admin_driver_availability$;
 
 revoke all on function public.wasil_admin_set_driver_availability(uuid, boolean) from public, anon;
 grant execute on function public.wasil_admin_set_driver_availability(uuid, boolean) to authenticated;
@@ -284,7 +284,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $admin_upsert_category$
 declare
   v_id uuid;
 begin
@@ -313,7 +313,7 @@ begin
   if v_id is null then return null; end if;
   return v_id;
 end;
-$;
+$admin_upsert_category$;
 
 revoke all on function public.wasil_admin_upsert_category(uuid, text, text, text, integer) from public, anon;
 grant execute on function public.wasil_admin_upsert_category(uuid, text, text, text, integer) to authenticated;
@@ -326,7 +326,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $admin_set_category_active$
 begin
   if auth.uid() is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -346,7 +346,7 @@ begin
   update public.categories set is_active = p_is_active where id = p_category_id;
   return found;
 end;
-$;
+$admin_set_category_active$;
 
 revoke all on function public.wasil_admin_set_category_active(uuid, boolean) from public, anon;
 grant execute on function public.wasil_admin_set_category_active(uuid, boolean) to authenticated;
