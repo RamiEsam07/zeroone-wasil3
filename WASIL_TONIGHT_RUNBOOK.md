@@ -8,7 +8,8 @@ This document is a practical checklist, not a claim that tests have already pass
 - The four app PRs are a low-level Supabase foundation; their existing screens and repositories are not yet proven to use Supabase.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
-- Phone OTP needs Supabase Phone Auth and a configured SMS provider. Until that is configured, OTP testing is blocked.
+- Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
+- Supabase Auth session persistence uses Android Keystore encryption and refreshes near expiry; this still requires runtime verification on an emulator/device.
 - The current order RPC is cash-on-delivery only and has a zero delivery fee. Do not treat this as launch-ready pricing.
 
 ## Before touching the live Supabase project
@@ -20,6 +21,7 @@ This document is a practical checklist, not a claim that tests have already pass
    - `202610170003_driver_lifecycle_and_cancellation.sql`
    - `202610170004_least_privilege_grants.sql`
    - `202610170005_driver_single_active_order.sql`
+   - `202610170006_admin_provisioning.sql`
 3. Stop on the first SQL error; do not continue to later migrations.
 4. Seed test users for customer, merchant, driver, and admin using a trusted administrative path. Do not make role assignment available to normal clients.
 5. Confirm RLS and table/function privileges with each role before any real customer data is entered.
@@ -49,17 +51,17 @@ This document is a practical checklist, not a claim that tests have already pass
 
 ## Android integration sequence
 
-1. Add the project's Supabase URL and publishable key to each developer's local `local.properties` only; do not commit secrets.
+1. Add the project's Supabase URL, publishable key, and Google Web OAuth client ID to the customer app's local `local.properties` only; do not commit OAuth secrets.
 2. Sync Gradle and build each of the four apps independently.
 3. Fix compile/configuration errors before connecting screens.
-4. Wire one shared contract at a time: auth/session → catalog → addresses → create order → merchant status → driver accept/status → order history/admin views.
+4. Auth/session code is now present for Google → Supabase; validate it first, then wire one shared contract at a time: catalog → addresses → create order → merchant status → driver accept/status → order history/admin views.
 5. Use a real user's access token for authenticated PostgREST/RPC calls. Never treat the publishable key as user authorization.
 6. Confirm session persistence, sign-out, token expiry/refresh, loading/error states, and offline/network failure behavior.
 7. Test on an emulator/device with test accounts and disposable data.
 
 ## Launch blockers to resolve
 
-- Trusted workflow to provision/approve merchant, driver, and admin roles.
+- Bootstrap the first admin through a trusted Supabase SQL Editor/service-role workflow; then test the admin provisioning RPCs for merchant/driver/customer roles and store approval.
 - Idempotency key for order creation so network retries cannot create duplicate orders.
 - Server-side delivery-fee rules and who receives the fee.
 - Payment-provider integration before enabling electronic payment.
