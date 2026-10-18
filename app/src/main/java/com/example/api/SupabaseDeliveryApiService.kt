@@ -268,7 +268,7 @@ class SupabaseDeliveryApiService(
             items = items,
             subtotal = optDouble("subtotal", 0.0),
             deliveryFee = optDouble("delivery_fee", 0.0),
-            serviceFee = 0.0,
+            serviceFee = optDouble("service_fee", 0.0),
             total = optDouble("total", 0.0),
             paymentMethod = PaymentMethod.CASH_ON_DELIVERY,
             status = status,
