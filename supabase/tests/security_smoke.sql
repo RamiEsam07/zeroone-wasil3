@@ -288,7 +288,7 @@ begin
     raise exception 'Customer must have exactly one default address after RPC';
   end if;
 end;
-$;
+$$;
 commit;
 
 begin;
