@@ -8,6 +8,7 @@ create or replace function public.wasil_create_order(
   p_store_id uuid,
   p_address_id uuid,
   p_items jsonb,
+  p_idempotency_key uuid,
   p_customer_notes text default null
 )
 returns uuid
@@ -31,8 +32,21 @@ begin
     raise exception 'Account is inactive' using errcode = '42501';
   end if;
 
+  if p_idempotency_key is null then
+    raise exception 'An idempotency key is required' using errcode = '22023';
+  end if;
+
   if public.current_wasil_role() is distinct from 'customer'::public.wasil_role then
     raise exception 'Only customer accounts can create orders' using errcode = '42501';
+  end if;
+
+  -- Serialize retries for this customer/key before touching stock or creating an order.
+  perform pg_advisory_xact_lock(hashtextextended(v_uid::text || ':' || p_idempotency_key::text, 0));
+  select o.id into v_order_id
+  from public.orders o
+  where o.customer_id = v_uid and o.idempotency_key = p_idempotency_key;
+  if found then
+    return v_order_id;
   end if;
 
   if p_store_id is null or p_address_id is null then
@@ -110,12 +124,12 @@ begin
   -- Electronic payment is intentionally not accepted until a payment provider is configured.
   insert into public.orders (
     customer_id, store_id, address_id, status, payment_method, payment_status,
-    currency, subtotal, delivery_fee, service_fee, total, customer_notes,
+    currency, subtotal, delivery_fee, service_fee, total, customer_notes, idempotency_key,
     store_name_snapshot, store_phone_snapshot, store_image_snapshot,
     delivery_address_snapshot, recipient_name_snapshot, recipient_phone_snapshot
   ) values (
     v_uid, p_store_id, p_address_id, 'placed', 'cash_on_delivery', 'pending',
-    'SDG', v_subtotal, 0, 250, v_subtotal + 250, left(p_customer_notes, 1000),
+    'SDG', v_subtotal, 0, 250, v_subtotal + 250, left(p_customer_notes, 1000), p_idempotency_key,
     (select s.name_ar from public.stores s where s.id = p_store_id),
     (select s.phone from public.stores s where s.id = p_store_id),
     (select s.image_url from public.stores s where s.id = p_store_id),
@@ -150,8 +164,8 @@ begin
 end;
 $$;
 
-revoke all on function public.wasil_create_order(uuid, uuid, jsonb, text) from public, anon;
-grant execute on function public.wasil_create_order(uuid, uuid, jsonb, text) to authenticated;
+revoke all on function public.wasil_create_order(uuid, uuid, jsonb, uuid, text) from public, anon;
+grant execute on function public.wasil_create_order(uuid, uuid, jsonb, uuid, text) to authenticated;
 
 create or replace function public.wasil_accept_order(p_order_id uuid)
 returns boolean
