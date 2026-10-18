@@ -65,6 +65,8 @@ create table public.stores (
   address_text text,
   latitude double precision,
   longitude double precision,
+  delivery_fee numeric(12,2) not null default 0 check (delivery_fee >= 0),
+  min_order_amount numeric(12,2) not null default 0 check (min_order_amount >= 0),
   is_open boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
