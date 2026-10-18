@@ -116,7 +116,7 @@ begin
         * cos(radians(v_address_lon - v_store_lon))
       ))) * 6371.0
     )::numeric, 2);
-    if v_distance_km > v_settings.max_delivery_radius_km then
+    if v_distance_km > v_max_delivery_radius_km then
       raise exception 'Delivery address is outside the configured service radius' using errcode = '22023';
     end if;
   end if;
@@ -285,6 +285,7 @@ declare
   v_existing_driver uuid;
   v_store_lat double precision;
   v_store_lon double precision;
+  v_max_delivery_radius_km numeric(8,2) := 25;
   v_driver_id uuid;
 begin
   if v_uid is null then
@@ -314,6 +315,8 @@ begin
   if not coalesce((select ps.auto_assign_drivers from public.platform_settings ps where ps.id = true), false) then
     return false;
   end if;
+  select ps.max_delivery_radius_km into v_max_delivery_radius_km
+  from public.platform_settings ps where ps.id = true;
 
   -- Do not auto-assign without real coordinates; otherwise "nearest" would be a guess.
   select d.profile_id into v_driver_id
