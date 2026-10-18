@@ -26,6 +26,37 @@ begin
   if has_function_privilege('anon', 'public.wasil_admin_set_user_access(uuid, public.wasil_role, boolean)', 'EXECUTE') then
     raise exception 'Anonymous users must not execute admin provisioning';
   end if;
+
+  if has_function_privilege('anon', 'public.wasil_list_available_orders()', 'EXECUTE') then
+    raise exception 'Anonymous users must not list driver offers';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.wasil_list_available_orders()', 'EXECUTE') then
+    raise exception 'Authenticated drivers need the limited available-order RPC';
+  end if;
+
+  if has_function_privilege('anon', 'public.wasil_admin_assign_driver(uuid, uuid)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.wasil_admin_set_driver_availability(uuid, boolean)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.wasil_admin_set_product_active(uuid, boolean)', 'EXECUTE') then
+    raise exception 'Anonymous users must not execute admin operational RPCs';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'orders'
+      and column_name in ('customer_name_snapshot', 'customer_phone_snapshot')
+    group by table_schema, table_name
+    having count(*) = 2
+  ) then
+    raise exception 'Order customer contact snapshots are missing';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'products' and column_name = 'is_active'
+  ) then
+    raise exception 'Product admin activation column is missing';
+  end if;
 end;
 $$;
 
