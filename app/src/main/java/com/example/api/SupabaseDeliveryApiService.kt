@@ -281,6 +281,8 @@ class SupabaseDeliveryApiService(
             createdAtMillis = System.currentTimeMillis(),
             estimatedDeliveryMinutes = store?.deliveryTimeMinutes ?: 35,
             customerNotes = optString("customer_notes"),
+            taxAmount = optDouble("tax_amount", 0.0),
+            distanceKm = optDouble("distance_km", 0.0),
         )
     }
 
