@@ -16,6 +16,7 @@ set search_path = ''
 as $$
 declare
   v_uid uuid := auth.uid();
+  v_current_role public.wasil_role;
 begin
   if v_uid is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -33,17 +34,42 @@ begin
     raise exception 'Administrators cannot change their own access through this RPC' using errcode = '42501';
   end if;
 
-  if not exists (select 1 from public.profiles p where p.id = p_user_id) then
+  select p.role into v_current_role
+  from public.profiles p
+  where p.id = p_user_id;
+
+  if not found then
     raise exception 'Target profile not found' using errcode = '22023';
   end if;
 
   if exists (
     select 1
     from public.orders o
-    where o.driver_id = p_user_id
-      and o.status in ('driver_assigned', 'picked_up', 'on_the_way')
-  ) and (p_role <> 'driver'::public.wasil_role or not p_is_active) then
-    raise exception 'Cannot disable or change the role of a driver with an active delivery'
+    where (
+      o.customer_id = p_user_id
+      or o.driver_id = p_user_id
+      or exists (
+        select 1 from public.stores s
+        where s.id = o.store_id and s.owner_id = p_user_id
+      )
+    )
+      and o.status not in ('delivered', 'cancelled')
+  ) and (
+    not p_is_active
+    or (v_current_role = 'driver'::public.wasil_role and p_role <> 'driver'::public.wasil_role)
+    or (v_current_role = 'merchant'::public.wasil_role and p_role <> 'merchant'::public.wasil_role)
+  ) then
+    raise exception 'Cannot disable this account or change its role while it has active orders'
+      using errcode = '22023';
+  end if;
+
+  if v_current_role = 'admin'::public.wasil_role
+     and (p_role <> 'admin'::public.wasil_role or not p_is_active)
+     and (
+       select count(*) from public.profiles p
+       where p.role = 'admin'::public.wasil_role and p.is_active
+     ) <= 1 then
+    raise exception 'Cannot remove the last active administrator'
       using errcode = '22023';
   end if;
 
