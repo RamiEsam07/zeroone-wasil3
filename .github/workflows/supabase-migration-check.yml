@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-migration-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   migration-smoke:
     runs-on: ubuntu-latest
