@@ -41,6 +41,19 @@ begin
     raise exception 'Anonymous users must not execute admin operational RPCs';
   end if;
 
+  if has_function_privilege('anon', 'public.wasil_auto_assign_ready_order(uuid)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.wasil_driver_release_assignment(uuid, text)', 'EXECUTE') then
+    raise exception 'Anonymous users must not execute assignment lifecycle RPCs';
+  end if;
+
+  if not has_table_privilege('authenticated', 'public.platform_settings', 'SELECT') then
+    raise exception 'Authenticated role needs table SELECT grant for admin settings RLS';
+  end if;
+
+  if has_table_privilege('anon', 'public.platform_settings', 'SELECT') then
+    raise exception 'Anonymous users must not read platform settings';
+  end if;
+
   if not exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'orders'
