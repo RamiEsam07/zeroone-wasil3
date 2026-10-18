@@ -7,12 +7,10 @@ begin;
 revoke update on public.profiles from authenticated;
 grant update (full_name, phone, avatar_url) on public.profiles to authenticated;
 
--- Driver availability and commission balances are controlled by server-side RPCs.
--- Permit onboarding to create a profile with only its identity and vehicle type;
--- is_available remains at its safe false default and cannot be client-supplied.
+-- Driver profile creation and availability are controlled by trusted provisioning/RPCs.
+-- Drivers cannot create a profile row or set server-managed availability themselves.
 revoke insert on public.driver_profiles from authenticated;
 revoke update on public.driver_profiles from authenticated;
-grant insert (profile_id, vehicle_type) on public.driver_profiles to authenticated;
 grant update (vehicle_type, latitude, longitude, last_location_at)
   on public.driver_profiles to authenticated;
 
