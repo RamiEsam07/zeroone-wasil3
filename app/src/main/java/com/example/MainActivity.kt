@@ -409,7 +409,7 @@ fun WasilCustomerApp(
                         CheckoutScreen(
                             cart = cart,
                             currentAddress = selectedAddress,
-                            customerPhone = selectedAddress?.recipientPhone ?: "+249 912 345 678",
+                            customerPhone = selectedAddress?.recipientPhone.orEmpty(),
                             selectedPaymentMethod = checkoutPaymentMethod,
                             onPaymentMethodSelect = { method -> viewModel.setPaymentMethod(method) },
                             supportedPaymentMethods = listOf(com.example.model.PaymentMethod.CASH_ON_DELIVERY),
