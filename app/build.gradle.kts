@@ -20,6 +20,8 @@ val supabaseUrl =
     supabaseLocalProperties.getProperty("SUPABASE_URL", "").trim()
 val supabasePublishableKey =
     supabaseLocalProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "").trim()
+val googleWebClientId =
+    supabaseLocalProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "").trim()
 val keystorePath = System.getenv("KEYSTORE_PATH")
     ?: supabaseLocalProperties.getProperty(
         "KEYSTORE_PATH",
