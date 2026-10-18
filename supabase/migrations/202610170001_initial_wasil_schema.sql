@@ -138,6 +138,7 @@ create table public.orders (
   recipient_name_snapshot text,
   recipient_phone_snapshot text,
   cancellation_reason text,
+  driver_release_reason text,
   placed_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   delivered_at timestamptz,
