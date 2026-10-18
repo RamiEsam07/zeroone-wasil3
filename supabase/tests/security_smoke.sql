@@ -195,7 +195,7 @@ insert into public.products (
 
 begin;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
-do $
+do $$
 declare
   v_order_id uuid;
   v_retry_order_id uuid;
