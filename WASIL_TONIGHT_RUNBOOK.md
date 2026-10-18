@@ -5,7 +5,7 @@ This document is a practical checklist, not a claim that tests have already pass
 ## Current safety boundary
 
 - Review and corrective commits are isolated on `fix/wasil-foundation-review`; keep `main` unchanged. Do not merge this branch or the foundation PR until code review, SQL validation in a disposable environment, and Android build checks are complete.
-- All four role-specific Android apps (customer, merchant/store, driver, admin) now have Supabase-backed login gates and role-specific repository wiring on isolated review branches. Their Android debug builds have passed CI on the latest role-app commits; real Google OAuth/Supabase runtime flows still require provider configuration and device testing.
+- All four role-specific Android apps (customer, merchant/store, driver, admin) now have Supabase-backed login gates and role-specific repository wiring on isolated review branches. The latest merchant, driver and admin debug builds passed CI; the customer build and database smoke tests are being re-run after the latest foundation changes. Real Google OAuth/Supabase runtime flows still require provider configuration and device testing.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
