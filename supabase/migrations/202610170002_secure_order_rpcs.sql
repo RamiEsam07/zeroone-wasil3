@@ -47,7 +47,7 @@ begin
 
   if exists (
     select 1
-    from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer)
+    from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text)
     where x.product_id is null or x.quantity is null or x.quantity < 1 or x.quantity > 100
   ) then
     raise exception 'Each item needs a valid product_id and quantity from 1 to 100' using errcode = '22023';
@@ -55,7 +55,7 @@ begin
 
   select count(*), count(distinct x.product_id)
     into v_count, v_distinct_count
-  from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer);
+  from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text);
 
   if v_count <> v_distinct_count then
     raise exception 'Duplicate product IDs are not allowed; combine their quantities' using errcode = '22023';
@@ -77,8 +77,8 @@ begin
 
   -- Lock all requested product rows in a stable order to avoid overselling and reduce deadlocks.
   for v_item in
-    select p.id, p.price, p.name_ar, p.stock_quantity, x.quantity
-    from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer)
+    select p.id, p.price, p.name_ar, p.stock_quantity, x.quantity, x.special_instructions
+    from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text)
     join public.products p on p.id = x.product_id
     where p.store_id = p_store_id
     order by p.id
@@ -97,7 +97,7 @@ begin
   end loop;
 
   select count(*) into v_count
-  from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer)
+  from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text)
   join public.products p on p.id = x.product_id
   where p.store_id = p_store_id and p.is_available and p.stock_quantity >= x.quantity;
 
@@ -125,8 +125,8 @@ begin
   ) returning id into v_order_id;
 
   for v_item in
-    select p.id, p.price, p.name_ar, x.quantity
-    from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer)
+    select p.id, p.price, p.name_ar, x.quantity, x.special_instructions
+    from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text)
     join public.products p on p.id = x.product_id
     where p.store_id = p_store_id
     order by p.id
@@ -140,9 +140,9 @@ begin
     end if;
 
     insert into public.order_items (
-      order_id, product_id, product_name_snapshot, unit_price, quantity
+      order_id, product_id, product_name_snapshot, special_instructions, unit_price, quantity
     ) values (
-      v_order_id, v_item.id, v_item.name_ar, v_item.price, v_item.quantity
+      v_order_id, v_item.id, v_item.name_ar, left(coalesce(v_item.special_instructions, ''), 500), v_item.price, v_item.quantity
     );
   end loop;
 
