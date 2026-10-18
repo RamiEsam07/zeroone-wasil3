@@ -424,6 +424,72 @@ $admin_set_product_active$;
 revoke all on function public.wasil_admin_set_product_active(uuid, boolean) from public, anon;
 grant execute on function public.wasil_admin_set_product_active(uuid, boolean) to authenticated;
 
+create or replace function public.wasil_admin_get_settings()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $admin_get_settings$
+declare
+  v_settings public.platform_settings%rowtype;
+begin
+  if auth.uid() is null or not public.current_wasil_account_active() or not public.is_wasil_admin() then
+    raise exception 'Active administrator account required' using errcode = '42501';
+  end if;
+  select * into v_settings from public.platform_settings where id = true;
+  return to_jsonb(v_settings);
+end;
+$admin_get_settings$;
+
+revoke all on function public.wasil_admin_get_settings() from public, anon;
+grant execute on function public.wasil_admin_get_settings() to authenticated;
+
+create or replace function public.wasil_admin_update_settings(p_settings jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $admin_update_settings$
+declare
+  v_settings public.platform_settings%rowtype;
+begin
+  if auth.uid() is null or not public.current_wasil_account_active() or not public.is_wasil_admin() then
+    raise exception 'Active administrator account required' using errcode = '42501';
+  end if;
+  if p_settings is null or jsonb_typeof(p_settings) <> 'object' then
+    raise exception 'Settings object is required' using errcode = '22023';
+  end if;
+  if coalesce((p_settings->>'commission_rate_percent')::numeric, -1) not between 0 and 100
+     or coalesce((p_settings->>'tax_rate_percent')::numeric, -1) not between 0 and 100
+     or coalesce((p_settings->>'base_delivery_fee')::numeric, -1) < 0
+     or coalesce((p_settings->>'fee_per_km')::numeric, -1) < 0
+     or coalesce((p_settings->>'max_delivery_radius_km')::numeric, 0) <= 0
+     or nullif(trim(p_settings->>'currency_symbol'), '') is null then
+    raise exception 'One or more settings are outside allowed ranges' using errcode = '22023';
+  end if;
+
+  update public.platform_settings
+     set commission_rate_percent = (p_settings->>'commission_rate_percent')::numeric,
+         base_delivery_fee = (p_settings->>'base_delivery_fee')::numeric,
+         fee_per_km = (p_settings->>'fee_per_km')::numeric,
+         tax_rate_percent = (p_settings->>'tax_rate_percent')::numeric,
+         auto_assign_drivers = coalesce((p_settings->>'auto_assign_drivers')::boolean, false),
+         max_delivery_radius_km = (p_settings->>'max_delivery_radius_km')::numeric,
+         maintenance_mode = coalesce((p_settings->>'maintenance_mode')::boolean, false),
+         currency_symbol = trim(p_settings->>'currency_symbol'),
+         is_arabic_rtl = coalesce((p_settings->>'is_arabic_rtl')::boolean, true),
+         updated_at = now(),
+         updated_by = auth.uid()
+   where id = true
+   returning * into v_settings;
+  return to_jsonb(v_settings);
+end;
+$admin_update_settings$;
+
+revoke all on function public.wasil_admin_update_settings(jsonb) from public, anon;
+grant execute on function public.wasil_admin_update_settings(jsonb) to authenticated;
+
 commit;
 
 -- Bootstrap exactly one trusted administrator out-of-band using the real auth.users UUID:
