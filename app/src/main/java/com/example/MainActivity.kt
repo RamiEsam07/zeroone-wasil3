@@ -59,6 +59,7 @@ import com.example.ui.screens.ProductDetailDialog
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.StoreDetailScreen
 import com.example.ui.screens.StoreListScreen
+import com.example.model.User
 import com.example.ui.theme.WasilDeliveryTheme
 import com.example.viewmodel.BottomTab
 import com.example.viewmodel.DeliveryViewModel
@@ -109,14 +110,38 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
     var signingIn by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(authRepository) {
-        authRepository.restoreSession()
-            .onSuccess {
-                session = it
-                SupabaseSessionProvider.session = it
-                if (it != null) viewModel.refreshBackendData()
+    suspend fun activateSession(candidate: SupabaseSession): Boolean {
+        val accessResult = authRepository.getAccountAccess(candidate)
+        if (accessResult.isFailure) {
+            errorMessage = accessResult.exceptionOrNull()?.message ?: "تعذر التحقق من صلاحيات الحساب."
+            return false
+        }
+        val access = accessResult.getOrThrow()
+        if (!access.isActive || access.role != "customer") {
+            authRepository.signOut(candidate)
+            SupabaseSessionProvider.session = null
+            session = null
+            errorMessage = if (!access.isActive) {
+                "هذا الحساب غير مفعّل حالياً. تواصل مع الدعم."
+            } else {
+                "هذا التطبيق مخصص لحسابات العملاء. استخدم التطبيق المناسب لدور حسابك."
             }
-            .onFailure { errorMessage = it.message }
+            return false
+        }
+        session = candidate
+        SupabaseSessionProvider.session = candidate
+        errorMessage = null
+        viewModel.refreshBackendData()
+        return true
+    }
+
+    LaunchedEffect(authRepository) {
+        val restored = authRepository.restoreSession()
+        if (restored.isFailure) {
+            errorMessage = restored.exceptionOrNull()?.message
+        } else {
+            restored.getOrNull()?.let { activateSession(it) }
+        }
         restoringSession = false
     }
 
@@ -161,13 +186,12 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
                             } else {
                                 throw IllegalStateException("لم يتم استلام بيانات تسجيل دخول Google المتوقعة.")
                             }
-                            authRepository.signInWithGoogleIdToken(idToken)
-                                .onSuccess {
-                                    session = it
-                                    SupabaseSessionProvider.session = it
-                                    viewModel.refreshBackendData()
-                                }
-                                .onFailure { errorMessage = it.message ?: "تعذر تسجيل الدخول." }
+                            val signInResult = authRepository.signInWithGoogleIdToken(idToken)
+                            if (signInResult.isSuccess) {
+                                activateSession(signInResult.getOrThrow())
+                            } else {
+                                errorMessage = signInResult.exceptionOrNull()?.message ?: "تعذر تسجيل الدخول."
+                            }
                         } catch (error: Exception) {
                             errorMessage = error.message ?: "تعذر تسجيل الدخول باستخدام Google."
                         } finally {
@@ -180,6 +204,7 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
         else -> {
             WasilCustomerApp(
                 viewModel = viewModel,
+                currentSession = session,
                 onSignOut = {
                     scope.launch {
                         authRepository.signOut(session)
@@ -196,6 +221,7 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
 @Composable
 fun WasilCustomerApp(
     viewModel: DeliveryViewModel,
+    currentSession: SupabaseSession? = null,
     onSignOut: () -> Unit = {},
 ) {
     val currentScreen by viewModel.currentScreen.collectAsState()
@@ -423,6 +449,14 @@ fun WasilCustomerApp(
 
                     is Screen.Profile -> {
                         ProfileScreen(
+                            user = currentSession?.let {
+                                User(
+                                    id = it.userId,
+                                    name = it.email?.substringBefore("@")?.takeIf { name -> name.isNotBlank() } ?: "مستخدم وصّل",
+                                    phone = it.email.orEmpty(),
+                                    email = it.email.orEmpty(),
+                                )
+                            } ?: User(id = "", name = "مستخدم وصّل", phone = "", email = ""),
                             onSavedAddressesClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = false)) },
                             onSignOut = onSignOut,
                         )
