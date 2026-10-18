@@ -85,7 +85,7 @@ class SupabaseDeliveryApiService(
 
     override suspend fun getStoreProducts(storeId: String, category: String?): Result<List<Product>> = ioResult {
         val rows = getArray(
-            "rest/v1/products?select=*&store_id=eq." + safeValue(storeId) + "&is_available=eq.true&order=name_ar.asc"
+            "rest/v1/products?select=*&store_id=eq." + safeValue(storeId) + "&is_active=eq.true&is_available=eq.true&order=name_ar.asc"
         )
         buildList {
             for (i in 0 until rows.length()) {
@@ -97,7 +97,7 @@ class SupabaseDeliveryApiService(
     }
 
     override suspend fun getProductById(productId: String): Result<Product> = ioResult {
-        val rows = getArray("rest/v1/products?select=*&id=eq." + safeValue(productId))
+        val rows = getArray("rest/v1/products?select=*&id=eq." + safeValue(productId) + "&is_active=eq.true&is_available=eq.true")
         check(rows.length() > 0) { "المنتج غير موجود أو غير متاح حالياً." }
         rows.getJSONObject(0).toProduct()
     }
