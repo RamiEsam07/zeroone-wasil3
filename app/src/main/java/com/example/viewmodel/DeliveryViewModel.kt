@@ -122,6 +122,10 @@ class DeliveryViewModel(
         _storeProducts.value = emptyList()
         _selectedStoreCategory.value = "الكل"
         _productModalState.value = ProductDetailModalState()
+        _searchQuery.value = ""
+        _selectedCategoryFilter.value = StoreCategory.ALL
+        _screenStack.value = listOf(Screen.Home)
+        _currentTab.value = BottomTab.HOME
     }
 
     fun refreshOrdersNow() {
