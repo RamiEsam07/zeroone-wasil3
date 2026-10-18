@@ -46,7 +46,7 @@ android {
             "SUPABASE_PUBLISHABLE_KEY",
             "\"$supabasePublishableKey\""
         )
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\\\"$googleWebClientId\\\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     signingConfigs {
