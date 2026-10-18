@@ -137,6 +137,9 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
     }
 
     LaunchedEffect(authRepository) {
+        SupabaseSessionProvider.sessionRefresher = { candidate ->
+            authRepository.ensureValidSession(candidate).getOrThrow()
+        }
         val restored = authRepository.restoreSession()
         if (restored.isFailure) {
             errorMessage = restored.exceptionOrNull()?.message
