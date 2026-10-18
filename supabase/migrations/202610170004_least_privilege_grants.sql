@@ -14,6 +14,17 @@ revoke update on public.driver_profiles from authenticated;
 grant update (vehicle_type, latitude, longitude, last_location_at)
   on public.driver_profiles to authenticated;
 
+-- Merchants may maintain product content, stock and availability, but only the
+-- trusted admin RPC can activate/deactivate a product for customer discovery.
+alter table public.products alter column is_active set default false;
+revoke insert, update on public.products from authenticated;
+grant insert (store_id, name_ar, name_en, description, image_url, category, price,
+              stock_quantity, is_available)
+  on public.products to authenticated;
+grant update (name_ar, name_en, description, image_url, category, price,
+              stock_quantity, is_available)
+  on public.products to authenticated;
+
 -- Stores must be approved/activated through a trusted administrative path.
 -- A new merchant-created store starts inactive. RLS requires owner_id to equal
 -- auth.uid() on insert; ordinary clients cannot change owner_id or set is_active.
