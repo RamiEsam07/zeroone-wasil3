@@ -233,6 +233,7 @@ declare
   v_stock integer;
   v_total numeric(12,2);
   v_minimum_rejected boolean := false;
+  v_offline_rejected boolean := false;
 begin
   v_order_id := public.wasil_create_order(
     '10000000-0000-0000-0000-000000000001',
@@ -321,6 +322,15 @@ begin
   end if;
 
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
+  begin
+    perform public.wasil_set_driver_availability(false);
+  exception when sqlstate '22023' then
+    v_offline_rejected := true;
+  end;
+  if not v_offline_rejected then
+    raise exception 'Driver was allowed to go offline during an active delivery';
+  end if;
+
   perform public.wasil_driver_update_location(15.5910, 32.5610);
   if not exists (
     select 1 from public.driver_profiles
