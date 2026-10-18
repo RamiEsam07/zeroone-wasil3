@@ -319,6 +319,19 @@ begin
       where profile_id = '00000000-0000-0000-0000-000000000003') then
     raise exception 'Auto-assigned driver must become unavailable while handling the order';
   end if;
+
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
+  perform public.wasil_driver_update_location(15.5910, 32.5610);
+  if not exists (
+    select 1 from public.driver_profiles
+    where profile_id = '00000000-0000-0000-0000-000000000003'
+      and latitude = 15.5910
+      and longitude = 32.5610
+      and last_location_at > now() - interval '5 seconds'
+  ) then
+    raise exception 'Driver location RPC did not store coordinates with a server timestamp';
+  end if;
+
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 
   insert into public.addresses (
