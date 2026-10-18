@@ -128,6 +128,8 @@ create table public.orders (
   total numeric(12,2) not null default 0 check (total >= 0),
   customer_notes text,
   idempotency_key uuid,
+  customer_name_snapshot text not null default '',
+  customer_phone_snapshot text not null default '',
   store_name_snapshot text not null default '',
   store_phone_snapshot text,
   store_image_snapshot text,
@@ -317,6 +319,17 @@ create policy "stores_read_active" on public.stores
 for select to anon, authenticated
 using ((is_active and is_open) or public.owns_wasil_store(id) or public.is_wasil_admin());
 
+create policy "stores_read_assigned_driver" on public.stores
+for select to authenticated
+using (
+  public.current_wasil_role() = 'driver'::public.wasil_role
+  and public.current_wasil_account_active()
+  and exists (
+    select 1 from public.orders o
+    where o.store_id = id and o.driver_id = (select auth.uid())
+  )
+);
+
 create policy "stores_owner_insert" on public.stores
 for insert to authenticated
 with check (
@@ -384,6 +397,17 @@ with check (
 );
 
 -- Customers can create/read their own orders. Merchants see orders for their own stores.
+create policy "addresses_read_assigned_driver" on public.addresses
+for select to authenticated
+using (
+  public.current_wasil_role() = 'driver'::public.wasil_role
+  and public.current_wasil_account_active()
+  and exists (
+    select 1 from public.orders o
+    where o.address_id = id and o.driver_id = (select auth.uid())
+  )
+);
+
 create policy "orders_read_participants" on public.orders
 for select to authenticated
 using (
