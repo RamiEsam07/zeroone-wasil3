@@ -23,6 +23,14 @@ begin
     raise exception 'Authenticated users need the order RPC grant';
   end if;
 
+  if has_function_privilege('anon', 'public.wasil_set_default_address(uuid)', 'EXECUTE') then
+    raise exception 'Anonymous users must not change default addresses';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.wasil_set_default_address(uuid)', 'EXECUTE') then
+    raise exception 'Authenticated customers need the default-address RPC grant';
+  end if;
+
   if has_function_privilege('anon', 'public.wasil_admin_set_user_access(uuid, public.wasil_role, boolean)', 'EXECUTE') then
     raise exception 'Anonymous users must not execute admin provisioning';
   end if;
