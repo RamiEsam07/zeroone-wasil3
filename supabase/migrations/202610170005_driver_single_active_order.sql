@@ -144,7 +144,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $available_orders$
 declare
   v_uid uuid := auth.uid();
   v_result jsonb;
@@ -211,8 +211,7 @@ begin
 
   return v_result;
 end;
-$;
-
+$available_orders$;
 revoke all on function public.wasil_list_available_orders() from public, anon;
 grant execute on function public.wasil_list_available_orders() to authenticated;
 
