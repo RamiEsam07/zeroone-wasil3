@@ -1,7 +1,7 @@
 -- Smoke checks run only against the disposable PostgreSQL service in CI.
 -- They do not connect to or modify the live Supabase project.
 
-do $
+do $$
 declare
   v_unprotected_tables text;
 begin
