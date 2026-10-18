@@ -9,8 +9,9 @@ grant update (full_name, phone, avatar_url) on public.profiles to authenticated;
 
 -- Driver profile creation and availability are controlled by trusted provisioning/RPCs.
 -- Drivers cannot create a profile row or set server-managed availability themselves.
-revoke insert on public.driver_profiles from authenticated;
-revoke update on public.driver_profiles from authenticated;
+revoke all on public.driver_profiles from authenticated;
+revoke insert (profile_id, vehicle_type) on public.driver_profiles from authenticated;
+grant select on public.driver_profiles to authenticated;
 grant update (vehicle_type, latitude, longitude, last_location_at)
   on public.driver_profiles to authenticated;
 
