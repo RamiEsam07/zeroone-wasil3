@@ -26,6 +26,10 @@ This document is a practical checklist, not a claim that tests have already pass
 3. Stop on the first SQL error; do not continue to later migrations.
 4. Seed test users for customer, merchant, driver, and admin using a trusted administrative path. Do not make role assignment available to normal clients.
 5. Confirm RLS and table/function privileges with each role before any real customer data is entered.
+
+6. Bootstrap the first admin through a trusted SQL Editor/service-role workflow. A normal Google sign-up creates a customer profile only.
+7. To onboard a merchant or driver, first create their Supabase Auth/profile account, then use the admin provisioning RPC to assign the approved role and activate the account. The driver profile is created by trusted provisioning; driver clients cannot create it themselves.
+8. New stores and products remain inactive until admin approval/activation. Merchants may prepare store/product details, but those records must not appear in the customer catalog until the moderation flags are enabled by the admin RPC.
 6. Verify merchant-created stores and products are inactive by default; only admin RPCs may activate them. Merchants may edit product content, stock and availability but cannot bypass product approval.
 
 ## Required database test matrix
