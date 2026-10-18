@@ -3,6 +3,8 @@ name: Supabase migration smoke check
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [fix/wasil-foundation-review]
   workflow_dispatch:
 
 permissions:
