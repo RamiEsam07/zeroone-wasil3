@@ -397,6 +397,33 @@ $driver_release_assignment$;
 revoke all on function public.wasil_driver_release_assignment(uuid, text) from public, anon;
 grant execute on function public.wasil_driver_release_assignment(uuid, text) to authenticated;
 
+create or replace function public.wasil_admin_set_product_active(
+  p_product_id uuid,
+  p_is_active boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $admin_set_product_active$
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+  if not public.current_wasil_account_active() or not public.is_wasil_admin() then
+    raise exception 'Active administrator account required' using errcode = '42501';
+  end if;
+  if p_product_id is null or p_is_active is null then
+    raise exception 'Product and active state are required' using errcode = '22023';
+  end if;
+  update public.products set is_active = p_is_active, updated_at = now() where id = p_product_id;
+  return found;
+end;
+$admin_set_product_active$;
+
+revoke all on function public.wasil_admin_set_product_active(uuid, boolean) from public, anon;
+grant execute on function public.wasil_admin_set_product_active(uuid, boolean) to authenticated;
+
 commit;
 
 -- Bootstrap exactly one trusted administrator out-of-band using the real auth.users UUID:
