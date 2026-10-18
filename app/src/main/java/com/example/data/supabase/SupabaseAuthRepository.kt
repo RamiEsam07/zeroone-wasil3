@@ -50,23 +50,29 @@ class SupabaseAuthRepository(
     suspend fun restoreSession(): Result<SupabaseSession?> = withContext(Dispatchers.IO) {
         runCatching {
             val saved = sessionStore.load() ?: return@runCatching null
-            if (!saved.expiresSoon()) return@runCatching saved
-            try {
-                val response = postAuth(
-                    path = "/auth/v1/token?grant_type=refresh_token",
-                    body = JSONObject().put("refresh_token", saved.refreshToken),
-                )
-                parseAndSaveSession(response, fallback = saved)
-            } catch (error: Exception) {
-                // Preserve the refresh token on transient network/server failures.
-                // Clear it only when Supabase explicitly rejects the refresh credentials.
-                if (error is AuthHttpException && error.statusCode in 400..401) {
-                    sessionStore.clear()
-                }
-                throw error
-            }
+            ensureValidSession(saved).getOrThrow()
         }
     }
+
+    /** Refreshes a session only when it is near expiry; transient failures do not erase it. */
+    suspend fun ensureValidSession(session: SupabaseSession): Result<SupabaseSession> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                if (!session.expiresSoon()) return@runCatching session
+                try {
+                    val response = postAuth(
+                        path = "/auth/v1/token?grant_type=refresh_token",
+                        body = JSONObject().put("refresh_token", session.refreshToken),
+                    )
+                    parseAndSaveSession(response, fallback = session)
+                } catch (error: Exception) {
+                    if (error is AuthHttpException && error.statusCode in 400..401) {
+                        sessionStore.clear()
+                    }
+                    throw error
+                }
+            }
+        }
 
     /** Reads the server-owned profile role; client metadata is never trusted for authorization. */
     suspend fun getAccountAccess(session: SupabaseSession): Result<SupabaseAccountAccess> =
