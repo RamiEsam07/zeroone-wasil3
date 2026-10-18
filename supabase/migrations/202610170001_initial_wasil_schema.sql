@@ -287,7 +287,7 @@ using (is_active or public.is_wasil_admin());
 
 create policy "stores_read_active" on public.stores
 for select to anon, authenticated
-using ((is_active and is_open) or owner_id = (select auth.uid()) or public.is_wasil_admin());
+using ((is_active and is_open) or public.owns_wasil_store(id) or public.is_wasil_admin());
 
 create policy "stores_owner_insert" on public.stores
 for insert to authenticated
@@ -351,9 +351,14 @@ with check (
 create policy "orders_read_participants" on public.orders
 for select to authenticated
 using (
-  customer_id = (select auth.uid())
-  or driver_id = (select auth.uid())
-  or public.owns_wasil_store(store_id)
+  (
+    public.current_wasil_account_active()
+    and (
+      customer_id = (select auth.uid())
+      or driver_id = (select auth.uid())
+      or public.owns_wasil_store(store_id)
+    )
+  )
   or public.is_wasil_admin()
 );
 
@@ -365,22 +370,25 @@ using (
 create policy "order_items_read_participants" on public.order_items
 for select to authenticated
 using (
-  exists (
-    select 1 from public.orders o
-    where o.id = order_id
-      and (
-        o.customer_id = (select auth.uid())
-        or o.driver_id = (select auth.uid())
-        or public.owns_wasil_store(o.store_id)
-        or public.is_wasil_admin()
-      )
+  public.is_wasil_admin()
+  or (
+    public.current_wasil_account_active()
+    and exists (
+      select 1 from public.orders o
+      where o.id = order_id
+        and (
+          o.customer_id = (select auth.uid())
+          or o.driver_id = (select auth.uid())
+          or public.owns_wasil_store(o.store_id)
+        )
+    )
   )
 );
 
 -- Drivers may read/update their own driver profile. Admins can manage all.
 create policy "driver_profile_read_self_or_admin" on public.driver_profiles
 for select to authenticated
-using (profile_id = (select auth.uid()) or public.is_wasil_admin());
+using ((profile_id = (select auth.uid()) and public.current_wasil_account_active()) or public.is_wasil_admin());
 
 create policy "driver_profile_insert_self" on public.driver_profiles
 for insert to authenticated
