@@ -10,7 +10,7 @@ This document is a practical checklist, not a claim that tests have already pass
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
 - Supabase Auth session persistence uses Android Keystore encryption and refreshes near expiry; this still requires runtime verification on an emulator/device.
-- The current order RPC is cash-on-delivery only, has a zero delivery fee, and applies a fixed 250 SDG service fee matching the existing customer UI. Do not treat this as launch-ready pricing.
+- The current order RPC is cash-on-delivery only. Initial server-side delivery, service and tax settings default to zero; the store delivery fee and configured distance/tax rules are calculated on the server. Confirm and test the approved business rates before launch.
 
 ## Before touching the live Supabase project
 
@@ -29,7 +29,7 @@ This document is a practical checklist, not a claim that tests have already pass
 
 ## Required database test matrix
 
-The new GitHub Actions workflow `Supabase migration smoke check` applies all seven migrations to a disposable PostgreSQL database and runs basic RLS/grant smoke tests. A passing workflow is necessary but not sufficient; Supabase-specific Auth behavior and concurrency still need runtime tests.
+The GitHub Actions workflows `Android build check` and `Supabase migration smoke check` both passed for the current reviewed foundation commit. The latter applies all seven migrations to a disposable PostgreSQL database and runs basic RLS/grant smoke tests. These are real automated checks, but they are not a live Supabase Auth test or a full role/concurrency end-to-end test.
 
 | Scenario | Expected result |
 |---|---|
@@ -76,4 +76,4 @@ The new GitHub Actions workflow `Supabase migration smoke check` applies all sev
 
 ## Tonight's completion criteria
 
-Call a phase complete only when the relevant evidence exists: successful SQL application in a disposable environment, recorded role-based test results, successful Gradle builds, and an end-to-end test order through all relevant apps. GitHub files and draft PRs alone do not satisfy these criteria.
+Call the customer foundation's CI phase provisionally passed: the debug APK builds and all seven migration drafts apply in the disposable PostgreSQL workflow with smoke checks. Do not call production integration complete until a configured Google/Supabase sign-in, real test order, role-based merchant/driver/admin workflows, and concurrency tests succeed. GitHub files and CI alone do not satisfy those launch criteria.
