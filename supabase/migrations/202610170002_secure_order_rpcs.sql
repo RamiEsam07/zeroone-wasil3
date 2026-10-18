@@ -333,7 +333,7 @@ begin
         + cos(radians(v_store_lat)) * cos(radians(d.latitude))
         * cos(radians(d.longitude - v_store_lon))
       ))) * 6371.0
-    ) <= v_settings.max_delivery_radius_km
+    ) <= v_max_delivery_radius_km
     and not exists (
       select 1 from public.orders active_order
       where active_order.driver_id = d.profile_id
