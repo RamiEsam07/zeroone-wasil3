@@ -30,6 +30,7 @@ declare
   v_store_lat double precision;
   v_store_lon double precision;
   v_store_delivery_fee numeric(12,2) := 0;
+  v_store_min_order_amount numeric(12,2) := 0;
   v_address_lat double precision;
   v_address_lon double precision;
   v_settings public.platform_settings%rowtype;
@@ -100,8 +101,8 @@ begin
   end if;
 
   select * into v_settings from public.platform_settings where id = true;
-  select s.latitude, s.longitude, s.delivery_fee, a.latitude, a.longitude
-    into v_store_lat, v_store_lon, v_store_delivery_fee, v_address_lat, v_address_lon
+  select s.latitude, s.longitude, s.delivery_fee, s.min_order_amount, a.latitude, a.longitude
+    into v_store_lat, v_store_lon, v_store_delivery_fee, v_store_min_order_amount, v_address_lat, v_address_lon
   from public.stores s
   join public.addresses a on a.id = p_address_id
   where s.id = p_store_id;
@@ -146,6 +147,10 @@ begin
   from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text)
   join public.products p on p.id = x.product_id
   where p.store_id = p_store_id and p.is_active and p.is_available and p.stock_quantity >= x.quantity;
+
+  if v_subtotal < coalesce(v_store_min_order_amount, 0) then
+    raise exception 'Order subtotal is below the store minimum' using errcode = '22023';
+  end if;
 
   if v_count <> jsonb_array_length(p_items) then
     raise exception 'One or more products are missing, unavailable, out of stock, or belong to another store'
