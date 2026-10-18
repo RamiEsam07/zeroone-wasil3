@@ -171,6 +171,7 @@ class SupabaseDeliveryApiService(
             .put("p_store_id", request.storeId)
             .put("p_address_id", request.deliveryAddressId)
             .put("p_items", items)
+            .put("p_idempotency_key", request.idempotencyKey)
             .put("p_customer_notes", request.customerNotes.take(1000))
         val response = client.rest(
             tableOrRpcPath = "rest/v1/rpc/wasil_create_order",
