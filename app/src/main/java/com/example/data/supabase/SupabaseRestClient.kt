@@ -57,6 +57,7 @@ class SupabaseRestClient(
         method: String = "GET",
         body: String? = null,
         accessToken: String? = null,
+        prefer: String? = null,
     ): Result<String> {
         val normalizedPath = tableOrRpcPath.trimStart('/')
         val endpointPath = normalizedPath.substringBefore('?')
@@ -71,7 +72,7 @@ class SupabaseRestClient(
             "PostgREST path must not contain path traversal segments"
         }
         val parsedBody = body?.let { JSONObject(it) }
-        return request(normalizedPath, method, parsedBody, accessToken)
+        return request(normalizedPath, method, parsedBody, accessToken, prefer)
     }
 
     private fun request(
@@ -79,6 +80,7 @@ class SupabaseRestClient(
         method: String,
         body: JSONObject? = null,
         accessToken: String? = null,
+        prefer: String? = null,
     ): Result<String> = runCatching {
         check(isConfigured()) {
             "Supabase is not configured. Add SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY to local.properties."
@@ -88,6 +90,7 @@ class SupabaseRestClient(
             .header("apikey", publishableKey)
             .header("Authorization", "Bearer " + (accessToken?.takeIf { it.isNotBlank() } ?: publishableKey))
             .header("Accept", "application/json")
+        prefer?.takeIf { it.isNotBlank() }?.let { builder.header("Prefer", it) }
         val requestBody = body?.toString()?.toRequestBody(jsonType)
         when (method.uppercase()) {
             "GET" -> builder.get()
