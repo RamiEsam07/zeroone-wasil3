@@ -351,6 +351,52 @@ $admin_set_category_active$;
 revoke all on function public.wasil_admin_set_category_active(uuid, boolean) from public, anon;
 grant execute on function public.wasil_admin_set_category_active(uuid, boolean) to authenticated;
 
+create or replace function public.wasil_driver_release_assignment(
+  p_order_id uuid,
+  p_reason text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $driver_release_assignment$
+declare
+  v_uid uuid := auth.uid();
+  v_status public.wasil_order_status;
+  v_driver_id uuid;
+begin
+  if v_uid is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+  if not public.current_wasil_account_active()
+     or public.current_wasil_role() is distinct from 'driver'::public.wasil_role then
+    raise exception 'Active driver account required' using errcode = '42501';
+  end if;
+
+  select o.status, o.driver_id into v_status, v_driver_id
+  from public.orders o where o.id = p_order_id for update;
+  if not found or v_driver_id is distinct from v_uid or v_status <> 'driver_assigned' then
+    raise exception 'Only an assigned, not-yet-picked-up delivery can be released'
+      using errcode = '22023';
+  end if;
+
+  update public.orders
+     set driver_id = null, status = 'ready_for_pickup',
+         assigned_at = null, driver_release_reason = left(trim(coalesce(p_reason, '')), 500),
+         updated_at = now()
+   where id = p_order_id;
+
+  update public.driver_profiles
+     set is_available = true, updated_at = now()
+   where profile_id = v_uid;
+
+  return true;
+end;
+$driver_release_assignment$;
+
+revoke all on function public.wasil_driver_release_assignment(uuid, text) from public, anon;
+grant execute on function public.wasil_driver_release_assignment(uuid, text) to authenticated;
+
 commit;
 
 -- Bootstrap exactly one trusted administrator out-of-band using the real auth.users UUID:
