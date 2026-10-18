@@ -397,6 +397,7 @@ fun WasilCustomerApp(
                             customerPhone = selectedAddress?.recipientPhone ?: "+249 912 345 678",
                             selectedPaymentMethod = checkoutPaymentMethod,
                             onPaymentMethodSelect = { method -> viewModel.setPaymentMethod(method) },
+                            supportedPaymentMethods = listOf(com.example.model.PaymentMethod.CASH_ON_DELIVERY),
                             onChangeAddressClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = true)) },
                             onConfirmOrder = { notes -> viewModel.placeOrder(notes) }
                         )
@@ -420,6 +421,7 @@ fun WasilCustomerApp(
                                 order = order,
                                 onBackClick = { viewModel.navigateBack() },
                                 onAdvanceSimulation = { viewModel.advanceOrderSimulation(order.id) },
+                                showSimulationControls = false,
                                 onCancelOrder = { viewModel.cancelOrder(order.id) },
                                 onViewReceiptClick = { viewModel.openOrderDetail(order.id) }
                             )
