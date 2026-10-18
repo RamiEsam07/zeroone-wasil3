@@ -10,7 +10,7 @@ This document is a practical checklist, not a claim that tests have already pass
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
 - Supabase Auth session persistence uses Android Keystore encryption and refreshes near expiry; this still requires runtime verification on an emulator/device.
-- The current order RPC is cash-on-delivery only and has a zero delivery fee. Do not treat this as launch-ready pricing.
+- The current order RPC is cash-on-delivery only, has a zero delivery fee, and applies a fixed 250 SDG service fee matching the existing customer UI. Do not treat this as launch-ready pricing.
 
 ## Before touching the live Supabase project
 
