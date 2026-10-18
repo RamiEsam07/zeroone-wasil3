@@ -344,7 +344,7 @@ class SupabaseDeliveryApiService(
 
     private fun JSONObject.toAddress(): Address {
         val cityName = optString("city").takeIf { it.isNotBlank() } ?: "KHARTOUM"
-        val city = ioResult { SudanCity.valueOf(cityName) }.getOrDefault(SudanCity.KHARTOUM)
+        val city = runCatching { SudanCity.valueOf(cityName) }.getOrDefault(SudanCity.KHARTOUM)
         return Address(
             id = optString("id"),
             title = optString("label").ifBlank { "عنوان التوصيل" },
