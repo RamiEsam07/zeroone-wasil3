@@ -289,6 +289,23 @@ grant execute on function public.is_wasil_admin() to anon, authenticated;
 revoke all on function public.owns_wasil_store(uuid) from public, anon;
 grant execute on function public.owns_wasil_store(uuid) to anon, authenticated;
 
+create table public.platform_settings (
+  id boolean primary key default true check (id),
+  commission_rate_percent numeric(5,2) not null default 12.5 check (commission_rate_percent between 0 and 100),
+  base_delivery_fee numeric(12,2) not null default 0 check (base_delivery_fee >= 0),
+  fee_per_km numeric(12,2) not null default 0 check (fee_per_km >= 0),
+  tax_rate_percent numeric(5,2) not null default 0 check (tax_rate_percent between 0 and 100),
+  auto_assign_drivers boolean not null default false,
+  max_delivery_radius_km numeric(8,2) not null default 25 check (max_delivery_radius_km > 0),
+  maintenance_mode boolean not null default false,
+  currency_symbol text not null default 'SDG',
+  is_arabic_rtl boolean not null default true,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references public.profiles(id) on delete set null
+);
+
+insert into public.platform_settings (id) values (true) on conflict (id) do nothing;
+
 alter table public.profiles enable row level security;
 alter table public.categories enable row level security;
 alter table public.stores enable row level security;
@@ -297,8 +314,13 @@ alter table public.addresses enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.driver_profiles enable row level security;
+alter table public.platform_settings enable row level security;
 
 -- Profiles: user may read their own record; role is not exposed as a client-editable field.
+create policy "platform_settings_read_admin" on public.platform_settings
+for select to authenticated
+using (public.is_wasil_admin());
+
 create policy "profiles_read_self_or_admin" on public.profiles
 for select to authenticated
 using (id = (select auth.uid()) or public.is_wasil_admin());
@@ -480,6 +502,8 @@ with check (
 
 -- Grant only the table operations used by the policies; RLS still controls row access.
 grant select on public.categories, public.stores, public.products to anon, authenticated;
+revoke all on public.platform_settings from public, anon;
+grant select on public.platform_settings to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.addresses to authenticated;
 grant select, insert, update on public.driver_profiles to authenticated;
