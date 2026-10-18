@@ -37,7 +37,7 @@ The following SQL files are review drafts, not applied to the Supabase project:
 - `supabase/migrations/202610170001_initial_wasil_schema.sql` — initial tables and RLS policies.
 - `supabase/migrations/202610170002_secure_order_rpcs.sql` — transactional order creation, first-driver-wins acceptance, and merchant status transitions.
 - `supabase/migrations/202610170003_driver_lifecycle_and_cancellation.sql` — driver pickup/on-the-way/delivered transitions and cancellation with stock restoration.
-- `supabase/migrations/202610170004_least_privilege_grants.sql` — column-level grants to protect account activation and driver commission balances.
+- `supabase/migrations/202610170004_least_privilege_grants.sql` — column-level grants protect account activation, product activation, driver availability and commission balances; new stores and products start inactive and require admin approval.
 - `supabase/migrations/202610170005_driver_single_active_order.sql` — serializes driver availability/acceptance and blocks drivers from taking multiple active deliveries.
 - `supabase/migrations/202610170006_admin_provisioning.sql` — trusted role/activation provisioning and store approval RPCs.
 - `supabase/migrations/202610170007_address_default_rpc.sql` — atomically sets a customer's default address and restricts editable address columns.
