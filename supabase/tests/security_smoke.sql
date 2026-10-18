@@ -1,0 +1,66 @@
+-- Smoke checks run only against the disposable PostgreSQL service in CI.
+-- They do not connect to or modify the live Supabase project.
+
+do $$
+begin
+  if (select count(*) from public.categories where slug in
+      ('restaurants', 'cafes', 'groceries', 'bakeries', 'juices', 'pharmacy')) <> 6 then
+    raise exception 'Default customer categories were not seeded';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'orders' and column_name = 'idempotency_key'
+  ) then
+    raise exception 'Order idempotency column is missing';
+  end if;
+
+  if has_function_privilege('anon', 'public.wasil_create_order(uuid, uuid, jsonb, uuid, text)', 'EXECUTE') then
+    raise exception 'Anonymous users must not execute order creation';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.wasil_create_order(uuid, uuid, jsonb, uuid, text)', 'EXECUTE') then
+    raise exception 'Authenticated users need the order RPC grant';
+  end if;
+
+  if has_function_privilege('anon', 'public.wasil_admin_set_user_access(uuid, public.wasil_role, boolean)', 'EXECUTE') then
+    raise exception 'Anonymous users must not execute admin provisioning';
+  end if;
+end;
+$$;
+
+insert into auth.users (id, phone, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-000000000001', '+249900000001', '{}'::jsonb),
+  ('00000000-0000-0000-0000-000000000002', '+249900000002', '{}'::jsonb);
+
+insert into public.addresses (
+  customer_id, label, address_text, city, area, street, building_number,
+  recipient_name, recipient_phone
+) values
+  ('00000000-0000-0000-0000-000000000001', 'Home', 'Customer one address', 'KHARTOUM', 'Area 1', 'Street 1', '1', 'Customer One', '+249900000001'),
+  ('00000000-0000-0000-0000-000000000002', 'Home', 'Customer two address', 'KHARTOUM', 'Area 2', 'Street 2', '2', 'Customer Two', '+249900000002');
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+
+do $$
+declare
+  v_visible_addresses integer;
+begin
+  select count(*) into v_visible_addresses from public.addresses;
+  if v_visible_addresses <> 1 then
+    raise exception 'RLS leak: customer can see % addresses; expected only their own', v_visible_addresses;
+  end if;
+
+  begin
+    update public.profiles
+       set role = 'admin'::public.wasil_role
+     where id = '00000000-0000-0000-0000-000000000001';
+    raise exception 'Security failure: customer changed their own role';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$$;
+rollback;
