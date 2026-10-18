@@ -65,6 +65,7 @@ fun CheckoutScreen(
     onPaymentMethodSelect: (PaymentMethod) -> Unit,
     onChangeAddressClick: () -> Unit,
     onConfirmOrder: (notes: String) -> Unit,
+    supportedPaymentMethods: List<PaymentMethod> = PaymentMethod.entries,
     modifier: Modifier = Modifier
 ) {
     var notes by remember { mutableStateOf("") }
@@ -243,7 +244,7 @@ fun CheckoutScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        PaymentMethod.entries.forEach { method ->
+                        supportedPaymentMethods.forEach { method ->
                             val isSelected = selectedPaymentMethod == method
                             Surface(
                                 onClick = { onPaymentMethodSelect(method) },
