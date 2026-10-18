@@ -62,6 +62,11 @@ begin
     raise exception 'Anonymous users must not read platform settings';
   end if;
 
+  if has_column_privilege('authenticated', 'public.driver_profiles', 'profile_id', 'INSERT')
+     or has_column_privilege('authenticated', 'public.driver_profiles', 'vehicle_type', 'INSERT') then
+    raise exception 'Driver profile creation must use trusted admin provisioning';
+  end if;
+
   if not exists (
     select 1 from public.platform_settings
     where id = true
