@@ -71,6 +71,7 @@ fun OrderTrackingScreen(
     onAdvanceSimulation: () -> Unit,
     onCancelOrder: () -> Unit,
     onViewReceiptClick: () -> Unit,
+    showSimulationControls: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -207,7 +208,7 @@ fun OrderTrackingScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Interactive Status Progression Button (Allows user/reviewer to test all phases)
-                if (order.status.isActive) {
+                if (showSimulationControls && order.status.isActive) {
                     FilledTonalButton(
                         onClick = onAdvanceSimulation,
                         modifier = Modifier
