@@ -4,9 +4,11 @@
 
 begin;
 
--- Availability is controlled by trusted RPCs, not direct client UPDATEs.
+-- Availability and commission balances are controlled by trusted RPCs.
+-- Keep safe onboarding available while preventing clients from setting availability.
 revoke insert on public.driver_profiles from authenticated;
 revoke update on public.driver_profiles from authenticated;
+grant insert (profile_id, vehicle_type) on public.driver_profiles to authenticated;
 grant update (vehicle_type, latitude, longitude, last_location_at)
   on public.driver_profiles to authenticated;
 
