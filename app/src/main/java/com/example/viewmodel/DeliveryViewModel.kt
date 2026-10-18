@@ -115,6 +115,14 @@ class DeliveryViewModel(
         }
     }
 
+    fun refreshBackendData() {
+        viewModelScope.launch {
+            repository.refreshStores(_selectedCategoryFilter.value, _searchQuery.value)
+            repository.refreshAddresses()
+            repository.refreshOrders()
+        }
+    }
+
     fun navigateTo(screen: Screen) {
         val current = _screenStack.value
         // Avoid duplicating exact same top screen
