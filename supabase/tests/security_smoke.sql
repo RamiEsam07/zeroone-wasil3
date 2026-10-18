@@ -101,6 +101,17 @@ begin
     raise exception 'Drivers must not directly set availability or commission balance';
   end if;
 
+  if has_column_privilege('authenticated', 'public.driver_profiles', 'latitude', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.driver_profiles', 'longitude', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.driver_profiles', 'last_location_at', 'UPDATE') then
+    raise exception 'Drivers must update location through the server-timestamped RPC';
+  end if;
+
+  if has_function_privilege('anon', 'public.wasil_driver_update_location(double precision, double precision)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.wasil_driver_update_location(double precision, double precision)', 'EXECUTE') then
+    raise exception 'Driver location RPC grants are incorrect';
+  end if;
+
   if has_column_privilege('authenticated', 'public.driver_profiles', 'profile_id', 'INSERT')
      or has_column_privilege('authenticated', 'public.driver_profiles', 'vehicle_type', 'INSERT') then
     raise exception 'Driver profile creation must use trusted admin provisioning';
