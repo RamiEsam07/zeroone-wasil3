@@ -355,11 +355,19 @@ using (public.owns_wasil_store(store_id) or public.is_wasil_admin());
 create policy "addresses_owner_all" on public.addresses
 for all to authenticated
 using (
-  (customer_id = (select auth.uid()) and public.current_wasil_account_active())
+  (
+    customer_id = (select auth.uid())
+    and public.current_wasil_role() = 'customer'::public.wasil_role
+    and public.current_wasil_account_active()
+  )
   or public.is_wasil_admin()
 )
 with check (
-  (customer_id = (select auth.uid()) and public.current_wasil_account_active())
+  (
+    customer_id = (select auth.uid())
+    and public.current_wasil_role() = 'customer'::public.wasil_role
+    and public.current_wasil_account_active()
+  )
   or public.is_wasil_admin()
 );
 
