@@ -236,14 +236,26 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $
   select exists (
     select 1 from public.stores s
     where s.id = target_store_id
       and s.owner_id = (select auth.uid())
       and public.current_wasil_account_active()
   )
-$$;
+$;
+
+-- Limit helper execution to the roles whose RLS policies need these functions.
+-- Public catalog policies evaluate is_wasil_admin/owns_wasil_store for anon users,
+-- but those helpers return false for anonymous requests without an auth.uid().
+revoke all on function public.current_wasil_role() from public, anon;
+grant execute on function public.current_wasil_role() to authenticated;
+revoke all on function public.current_wasil_account_active() from public, anon;
+grant execute on function public.current_wasil_account_active() to authenticated;
+revoke all on function public.is_wasil_admin() from public, anon;
+grant execute on function public.is_wasil_admin() to anon, authenticated;
+revoke all on function public.owns_wasil_store(uuid) from public, anon;
+grant execute on function public.owns_wasil_store(uuid) to anon, authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.categories enable row level security;
