@@ -1,8 +1,25 @@
 -- Smoke checks run only against the disposable PostgreSQL service in CI.
 -- They do not connect to or modify the live Supabase project.
 
-do $$
+do $
+declare
+  v_unprotected_tables text;
 begin
+  select string_agg(required.table_name, ', ' order by required.table_name)
+    into v_unprotected_tables
+  from (values
+    ('profiles'), ('categories'), ('stores'), ('products'),
+    ('addresses'), ('orders'), ('order_items'), ('driver_profiles'),
+    ('platform_settings')
+  ) as required(table_name)
+  left join pg_class c on c.relname = required.table_name
+  left join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+  where c.oid is null or n.oid is null or not c.relrowsecurity;
+
+  if v_unprotected_tables is not null then
+    raise exception 'RLS must be enabled on all exposed tables; missing/unprotected: %', v_unprotected_tables;
+  end if;
+
   if (select count(*) from public.categories where slug in
       ('restaurants', 'cafes', 'groceries', 'bakeries', 'juices', 'pharmacy')) <> 6 then
     raise exception 'Default customer categories were not seeded';
