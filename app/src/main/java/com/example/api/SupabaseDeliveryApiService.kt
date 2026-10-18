@@ -30,18 +30,18 @@ class SupabaseDeliveryApiService(
     private suspend fun <T> ioResult(block: suspend () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching { block() } }
 
-    private fun currentSession(): SupabaseSession =
-        SupabaseSessionProvider.session
+    private suspend fun currentSession(): SupabaseSession =
+        SupabaseSessionProvider.validSessionOrNull()
             ?: throw IllegalStateException("سجّل الدخول أولاً قبل الوصول إلى بيانات حسابك.")
 
-    private fun accessToken(): String = currentSession().accessToken
+    private suspend fun accessToken(): String = currentSession().accessToken
 
-    private fun getArray(path: String, authenticated: Boolean = false): JSONArray {
-        val token = if (authenticated) accessToken() else SupabaseSessionProvider.session?.accessToken
+    private suspend fun getArray(path: String, authenticated: Boolean = false): JSONArray {
+        val token = if (authenticated) accessToken() else SupabaseSessionProvider.validSessionOrNull()?.accessToken
         return JSONArray(client.rest(path, accessToken = token).getOrThrow())
     }
 
-    private fun postObject(path: String, body: JSONObject, prefer: String? = null): JSONArray =
+    private suspend fun postObject(path: String, body: JSONObject, prefer: String? = null): JSONArray =
         JSONArray(
             client.rest(
                 tableOrRpcPath = path,
