@@ -158,7 +158,7 @@ create table public.order_items (
 
 create table public.driver_profiles (
   profile_id uuid primary key references public.profiles(id) on delete cascade,
-  vehicle_type text not null default 'motorcycle' check (vehicle_type in ('motorcycle', 'car', 'bicycle', 'other')),
+  vehicle_type text not null default 'motorcycle' check (vehicle_type in ('motorcycle', 'car', 'bicycle', 'van', 'other')),
   is_available boolean not null default false,
   latitude double precision,
   longitude double precision,
