@@ -43,13 +43,17 @@ begin
     raise exception 'Driver profile not found' using errcode = '42501';
   end if;
 
-  if p_is_available and exists (
+  if exists (
     select 1
     from public.orders o
     where o.driver_id = v_uid
       and o.status in ('driver_assigned', 'picked_up', 'on_the_way')
   ) then
-    raise exception 'Cannot become available while an active delivery is assigned' using errcode = '22023';
+    if p_is_available then
+      raise exception 'Cannot become available while an active delivery is assigned' using errcode = '22023';
+    else
+      raise exception 'Cannot go offline while an active delivery is assigned' using errcode = '22023';
+    end if;
   end if;
 
   update public.driver_profiles
