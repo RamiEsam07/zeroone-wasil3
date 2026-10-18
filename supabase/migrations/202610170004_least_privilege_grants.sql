@@ -31,10 +31,10 @@ grant update (name_ar, name_en, description, image_url, category, price,
 alter table public.stores alter column is_active set default false;
 revoke insert, update on public.stores from authenticated;
 grant insert (owner_id, category_id, name_ar, name_en, description, phone,
-              image_url, address_text, latitude, longitude, is_open)
+              image_url, address_text, latitude, longitude, delivery_fee, min_order_amount, is_open)
   on public.stores to authenticated;
 grant update (category_id, name_ar, name_en, description, phone, image_url,
-              address_text, latitude, longitude, is_open)
+              address_text, latitude, longitude, delivery_fee, min_order_amount, is_open)
   on public.stores to authenticated;
 
 -- Ensure clients can read order records only through the RLS participant policies.
