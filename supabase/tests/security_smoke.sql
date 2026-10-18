@@ -170,6 +170,127 @@ insert into public.addresses (
   ('00000000-0000-0000-0000-000000000001', 'Home', 'Customer one address', 'KHARTOUM', 'Area 1', 'Street 1', '1', 'Customer One', '+249900000001'),
   ('00000000-0000-0000-0000-000000000002', 'Home', 'Customer two address', 'KHARTOUM', 'Area 2', 'Street 2', '2', 'Customer Two', '+249900000002');
 
+update public.profiles
+   set role = 'merchant'::public.wasil_role
+ where id = '00000000-0000-0000-0000-000000000002';
+
+insert into public.stores (
+  id, owner_id, category_id, name_ar, name_en, phone, address_text,
+  delivery_fee, min_order_amount, is_active, is_open
+) values (
+  '10000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002',
+  (select id from public.categories where slug = 'restaurants'),
+  'متجر اختبار', 'Smoke Test Store', '+249900000002', 'Test store address',
+  4.50, 15.00, true, true
+);
+
+insert into public.products (
+  id, store_id, name_ar, price, stock_quantity, is_available, is_active
+) values (
+  '20000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  'منتج اختبار', 10.00, 3, true, true
+);
+
+begin;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+do $
+declare
+  v_order_id uuid;
+  v_retry_order_id uuid;
+  v_second_address_id uuid;
+  v_stock integer;
+  v_total numeric(12,2);
+  v_minimum_rejected boolean := false;
+begin
+  v_order_id := public.wasil_create_order(
+    '10000000-0000-0000-0000-000000000001',
+    (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' order by created_at limit 1),
+    jsonb_build_array(jsonb_build_object(
+      'product_id', '20000000-0000-0000-0000-000000000001',
+      'quantity', 2,
+      'special_instructions', 'smoke test'
+    )),
+    '30000000-0000-0000-0000-000000000001',
+    'Order RPC smoke test'
+  );
+
+  v_retry_order_id := public.wasil_create_order(
+    '10000000-0000-0000-0000-000000000001',
+    (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' order by created_at limit 1),
+    jsonb_build_array(jsonb_build_object(
+      'product_id', '20000000-0000-0000-0000-000000000001',
+      'quantity', 2,
+      'special_instructions', 'smoke test'
+    )),
+    '30000000-0000-0000-0000-000000000001',
+    'Order RPC retry smoke test'
+  );
+
+  if v_order_id <> v_retry_order_id then
+    raise exception 'Idempotent order retry returned a different order';
+  end if;
+
+  select stock_quantity into v_stock
+  from public.products where id = '20000000-0000-0000-0000-000000000001';
+  if v_stock <> 1 then
+    raise exception 'Idempotent order creation decremented stock incorrectly: %', v_stock;
+  end if;
+
+  select total into v_total from public.orders where id = v_order_id;
+  if v_total <> 24.50 then
+    raise exception 'Server-calculated order total is wrong: expected 24.50, got %', v_total;
+  end if;
+
+  update public.stores set min_order_amount = 25.00
+  where id = '10000000-0000-0000-0000-000000000001';
+  begin
+    perform public.wasil_create_order(
+      '10000000-0000-0000-0000-000000000001',
+      (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' order by created_at limit 1),
+      jsonb_build_array(jsonb_build_object(
+        'product_id', '20000000-0000-0000-0000-000000000001',
+        'quantity', 1,
+        'special_instructions', ''
+      )),
+      '30000000-0000-0000-0000-000000000002',
+      'Below minimum smoke test'
+    );
+  exception when sqlstate '22023' then
+    v_minimum_rejected := true;
+  end;
+  if not v_minimum_rejected then
+    raise exception 'Order below store minimum was not rejected';
+  end if;
+
+  select stock_quantity into v_stock
+  from public.products where id = '20000000-0000-0000-0000-000000000001';
+  if v_stock <> 1 then
+    raise exception 'Rejected below-minimum order changed stock';
+  end if;
+
+  insert into public.addresses (
+    customer_id, label, address_text, city, area, street, building_number,
+    recipient_name, recipient_phone
+  ) values (
+    '00000000-0000-0000-0000-000000000001', 'Work', 'Second customer address',
+    'KHARTOUM', 'Area 3', 'Street 3', '3', 'Customer One', '+249900000001'
+  ) returning id into v_second_address_id;
+
+  perform public.wasil_set_default_address(v_second_address_id);
+
+  if not (select is_default from public.addresses where id = v_second_address_id) then
+    raise exception 'Default-address RPC did not mark the selected address';
+  end if;
+  if (select count(*) from public.addresses
+      where customer_id = '00000000-0000-0000-0000-000000000001' and is_default) <> 1 then
+    raise exception 'Customer must have exactly one default address after RPC';
+  end if;
+end;
+$;
+commit;
+
 begin;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
@@ -179,8 +300,8 @@ declare
   v_visible_addresses integer;
 begin
   select count(*) into v_visible_addresses from public.addresses;
-  if v_visible_addresses <> 1 then
-    raise exception 'RLS leak: customer can see % addresses; expected only their own', v_visible_addresses;
+  if v_visible_addresses <> 2 then
+    raise exception 'RLS leak: customer can see % addresses; expected their two addresses only', v_visible_addresses;
   end if;
 
   begin
