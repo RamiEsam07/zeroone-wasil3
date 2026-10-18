@@ -44,6 +44,15 @@ create table public.categories (
   created_at timestamptz not null default now()
 );
 
+insert into public.categories (name_ar, name_en, slug, sort_order) values
+  ('مطاعم', 'Restaurants', 'restaurants', 1),
+  ('كافيهات وحلويات', 'Cafes & Desserts', 'cafes', 2),
+  ('بقالة وسوبرماركت', 'Groceries & Supermarkets', 'groceries', 3),
+  ('مخابز ومعجنات', 'Bakeries & Pastries', 'bakeries', 4),
+  ('عصائر طبيعية', 'Fresh Juices', 'juices', 5),
+  ('صيدليات', 'Pharmacies', 'pharmacy', 6)
+on conflict (slug) do nothing;
+
 create table public.stores (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete restrict,
@@ -115,6 +124,7 @@ create table public.orders (
   currency text not null default 'SDG',
   subtotal numeric(12,2) not null default 0 check (subtotal >= 0),
   delivery_fee numeric(12,2) not null default 0 check (delivery_fee >= 0),
+  service_fee numeric(12,2) not null default 250 check (service_fee >= 0),
   total numeric(12,2) not null default 0 check (total >= 0),
   customer_notes text,
   store_name_snapshot text not null default '',
