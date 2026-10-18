@@ -34,7 +34,7 @@ This document is a practical checklist, not a claim that tests have already pass
 
 ## Required database test matrix
 
-The GitHub Actions workflows `Android build check` and `Supabase migration smoke check` both passed for the current reviewed foundation commit. The latter applies all seven migrations to a disposable PostgreSQL database and runs basic RLS/grant smoke tests. These are real automated checks, but they are not a live Supabase Auth test or a full role/concurrency end-to-end test.
+The GitHub Actions workflows `Android build check` and `Supabase migration smoke check` run automatically on each review-branch update. Confirm the latest commit has both green checks before merge. The migration workflow applies all seven migrations to a disposable PostgreSQL database and runs schema, privilege, RLS, order-idempotency, pricing/minimum, and default-address checks. These checks do not connect to the live Supabase project and are not a full device-level Google Auth or multi-driver concurrency test.
 
 | Scenario | Expected result |
 |---|---|
