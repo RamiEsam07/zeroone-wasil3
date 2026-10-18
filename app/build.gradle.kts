@@ -134,11 +134,11 @@ dependencies {
     implementation(libs.firebase.appcheck.recaptcha)
     implementation(libs.firebase.appcheck.debug)
 
-    // Enable these together when Google Sign-In is implemented.
-    // implementation(libs.firebase.auth)
-    // implementation(libs.androidx.credentials)
-    // implementation(libs.androidx.credentials.play.services)
-    // implementation(libs.googleid)
+    // Native Google sign-in exchanges the Google ID token for a Supabase Auth session.
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
+    implementation(libs.androidx.security.crypto)
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
