@@ -6,6 +6,23 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.supabase.SecureSessionStore
+import com.example.data.supabase.SupabaseAuthRepository
+import com.example.data.supabase.SupabaseSession
+import com.example.ui.screens.WasilLoginScreen
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -56,7 +73,7 @@ class MainActivity : ComponentActivity() {
             WasilDeliveryTheme {
                 // Sudanese Arabic RTL experience
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    WasilCustomerApp(viewModel = viewModel)
+                    AuthenticatedWasilRoot(viewModel = viewModel)
                 }
             }
         }
@@ -64,7 +81,98 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WasilCustomerApp(viewModel: DeliveryViewModel) {
+private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
+    val context = LocalContext.current
+    val authRepository = remember(context) {
+        SupabaseAuthRepository(SecureSessionStore(context))
+    }
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val scope = rememberCoroutineScope()
+    var session by remember { mutableStateOf<SupabaseSession?>(null) }
+    var restoringSession by remember { mutableStateOf(true) }
+    var signingIn by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(authRepository) {
+        authRepository.restoreSession()
+            .onSuccess { session = it }
+            .onFailure { errorMessage = it.message }
+        restoringSession = false
+    }
+
+    when {
+        restoringSession -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        session == null -> {
+            WasilLoginScreen(
+                isConfigured = authRepository.isConfigured() &&
+                    BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank(),
+                isLoading = signingIn,
+                errorMessage = errorMessage,
+                onGoogleSignIn = {
+                    scope.launch {
+                        signingIn = true
+                        errorMessage = null
+                        try {
+                            check(BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
+                                "أضف GOOGLE_WEB_CLIENT_ID إلى local.properties بعد إعداد Google OAuth."
+                            }
+                            val googleOption = GetGoogleIdOption.Builder()
+                                .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                                .setFilterByAuthorizedAccounts(false)
+                                .setAutoSelectEnabled(false)
+                                .build()
+                            val request = GetCredentialRequest.Builder()
+                                .addCredentialOption(googleOption)
+                                .build()
+                            val credentialResponse = credentialManager.getCredential(context, request)
+                            val credential = credentialResponse.credential
+                            val idToken = if (
+                                credential is CustomCredential &&
+                                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                            ) {
+                                GoogleIdTokenCredential.createFrom(credential.data).idToken
+                            } else {
+                                throw IllegalStateException("لم يتم استلام بيانات تسجيل دخول Google المتوقعة.")
+                            }
+                            authRepository.signInWithGoogleIdToken(idToken)
+                                .onSuccess { session = it }
+                                .onFailure { errorMessage = it.message ?: "تعذر تسجيل الدخول." }
+                        } catch (error: Exception) {
+                            errorMessage = error.message ?: "تعذر تسجيل الدخول باستخدام Google."
+                        } finally {
+                            signingIn = false
+                        }
+                    }
+                },
+            )
+        }
+        else -> {
+            WasilCustomerApp(
+                viewModel = viewModel,
+                onSignOut = {
+                    scope.launch {
+                        authRepository.signOut(session)
+                            .onFailure { errorMessage = it.message }
+                        session = null
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+fun WasilCustomerApp(
+    viewModel: DeliveryViewModel,
+    onSignOut: () -> Unit = {},
+) {
     val currentScreen by viewModel.currentScreen.collectAsState()
     val currentTab by viewModel.currentTab.collectAsState()
     val cart by viewModel.cart.collectAsState()
@@ -290,7 +398,8 @@ fun WasilCustomerApp(viewModel: DeliveryViewModel) {
 
                     is Screen.Profile -> {
                         ProfileScreen(
-                            onSavedAddressesClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = false)) }
+                            onSavedAddressesClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = false)) },
+                            onSignOut = onSignOut,
                         )
                     }
                 }
