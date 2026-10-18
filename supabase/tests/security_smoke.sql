@@ -32,6 +32,13 @@ begin
     raise exception 'Order idempotency column is missing';
   end if;
 
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'email'
+  ) then
+    raise exception 'Profile email column for admin account identification is missing';
+  end if;
+
   if has_function_privilege('anon', 'public.wasil_create_order(uuid, uuid, jsonb, uuid, text)', 'EXECUTE') then
     raise exception 'Anonymous users must not execute order creation';
   end if;
