@@ -27,6 +27,10 @@ begin
     raise exception 'Authentication required' using errcode = '28000';
   end if;
 
+  if not public.current_wasil_account_active() then
+    raise exception 'Account is inactive' using errcode = '42501';
+  end if;
+
   if public.current_wasil_role() is distinct from 'customer'::public.wasil_role then
     raise exception 'Only customer accounts can create orders' using errcode = '42501';
   end if;
@@ -155,6 +159,10 @@ begin
     raise exception 'Authentication required' using errcode = '28000';
   end if;
 
+  if not public.current_wasil_account_active() then
+    raise exception 'Account is inactive' using errcode = '42501';
+  end if;
+
   if public.current_wasil_role() is distinct from 'driver'::public.wasil_role then
     raise exception 'Only driver accounts can accept orders' using errcode = '42501';
   end if;
@@ -207,6 +215,10 @@ declare
 begin
   if v_uid is null then
     raise exception 'Authentication required' using errcode = '28000';
+  end if;
+
+  if not public.current_wasil_account_active() then
+    raise exception 'Account is inactive' using errcode = '42501';
   end if;
 
   if public.current_wasil_role() is distinct from 'merchant'::public.wasil_role
