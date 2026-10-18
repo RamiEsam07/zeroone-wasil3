@@ -26,6 +26,7 @@ This document is a practical checklist, not a claim that tests have already pass
 3. Stop on the first SQL error; do not continue to later migrations.
 4. Seed test users for customer, merchant, driver, and admin using a trusted administrative path. Do not make role assignment available to normal clients.
 5. Confirm RLS and table/function privileges with each role before any real customer data is entered.
+6. Verify merchant-created stores and products are inactive by default; only admin RPCs may activate them. Merchants may edit product content, stock and availability but cannot bypass product approval.
 
 ## Required database test matrix
 
@@ -60,7 +61,7 @@ The GitHub Actions workflows `Android build check` and `Supabase migration smoke
 3. Fix compile/configuration errors before connecting screens.
 4. The customer-side contracts for catalog, addresses, create order, order history and cancellation are wired to Supabase. Validate them end-to-end; then integrate merchant status, driver accept/status and admin provisioning in the role-specific app repositories.
 5. Use a real user's access token for authenticated PostgREST/RPC calls. Never treat the publishable key as user authorization.
-6. Confirm session persistence, sign-out, token expiry/refresh, loading/error states, and offline/network failure behavior.
+7. Confirm session persistence, sign-out, token expiry/refresh, loading/error states, and offline/network failure behavior.
 7. Test on an emulator/device with test accounts and disposable data.
 
 ## Launch blockers to resolve
