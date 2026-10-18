@@ -204,6 +204,21 @@ as $$
   select p.role from public.profiles p where p.id = (select auth.uid())
 $$;
 
+-- True only when the signed-in user has an active profile. Sensitive RPCs
+-- must check this separately from role membership.
+create or replace function public.current_wasil_account_active()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select coalesce(
+    (select p.is_active from public.profiles p where p.id = (select auth.uid())),
+    false
+  )
+$;
+
 create or replace function public.is_wasil_admin()
 returns boolean
 language sql
