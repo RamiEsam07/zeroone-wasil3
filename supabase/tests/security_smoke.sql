@@ -130,6 +130,16 @@ begin
 
   if not exists (
     select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'orders'
+      and column_name in ('assigned_at', 'picked_up_at', 'delivered_at')
+    group by table_schema, table_name
+    having count(*) = 3
+  ) then
+    raise exception 'Driver lifecycle timestamps are missing';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'products' and column_name = 'is_active'
   ) then
     raise exception 'Product admin activation column is missing';
