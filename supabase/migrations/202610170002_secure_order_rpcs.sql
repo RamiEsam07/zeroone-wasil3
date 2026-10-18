@@ -315,28 +315,33 @@ begin
     return false;
   end if;
 
+  -- Do not auto-assign without real coordinates; otherwise "nearest" would be a guess.
   select d.profile_id into v_driver_id
   from public.driver_profiles d
   join public.profiles p on p.id = d.profile_id
   where p.role = 'driver'::public.wasil_role
     and p.is_active
     and d.is_available
+    and v_store_lat is not null and v_store_lon is not null
+    and d.latitude is not null and d.longitude is not null
+    and (
+      acos(least(1.0, greatest(-1.0,
+        sin(radians(v_store_lat)) * sin(radians(d.latitude))
+        + cos(radians(v_store_lat)) * cos(radians(d.latitude))
+        * cos(radians(d.longitude - v_store_lon))
+      ))) * 6371.0
+    ) <= v_settings.max_delivery_radius_km
     and not exists (
       select 1 from public.orders active_order
       where active_order.driver_id = d.profile_id
         and active_order.status in ('driver_assigned', 'picked_up', 'on_the_way')
     )
   order by
-    case
-      when v_store_lat is not null and v_store_lon is not null
-       and d.latitude is not null and d.longitude is not null
-      then acos(least(1.0, greatest(-1.0,
-        sin(radians(v_store_lat)) * sin(radians(d.latitude))
-        + cos(radians(v_store_lat)) * cos(radians(d.latitude))
-        * cos(radians(d.longitude - v_store_lon))
-      ))) * 6371.0
-      else null
-    end asc nulls last,
+    acos(least(1.0, greatest(-1.0,
+      sin(radians(v_store_lat)) * sin(radians(d.latitude))
+      + cos(radians(v_store_lat)) * cos(radians(d.latitude))
+      * cos(radians(d.longitude - v_store_lon))
+    ))) * 6371.0 asc,
     case d.vehicle_type
       when 'motorcycle' then 0
       when 'car' then 1
