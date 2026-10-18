@@ -295,7 +295,7 @@ create table public.platform_settings (
   base_delivery_fee numeric(12,2) not null default 3.50 check (base_delivery_fee >= 0),
   fee_per_km numeric(12,2) not null default 0.75 check (fee_per_km >= 0),
   tax_rate_percent numeric(5,2) not null default 5.0 check (tax_rate_percent between 0 and 100),
-  auto_assign_drivers boolean not null default true,
+  auto_assign_drivers boolean not null default false,
   max_delivery_radius_km numeric(8,2) not null default 25 check (max_delivery_radius_km > 0),
   maintenance_mode boolean not null default false,
   currency_symbol text not null default 'SDG',
