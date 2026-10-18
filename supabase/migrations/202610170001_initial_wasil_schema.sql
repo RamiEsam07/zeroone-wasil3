@@ -85,6 +85,7 @@ create table public.products (
   currency text not null default 'SDG',
   stock_quantity integer not null default 0 check (stock_quantity >= 0),
   is_available boolean not null default true,
+  is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -352,7 +353,7 @@ with check (
 create policy "products_read_available" on public.products
 for select to anon, authenticated
 using (
-  (is_available and exists (
+  (is_active and is_available and exists (
     select 1 from public.stores s where s.id = store_id and s.is_active and s.is_open
   ))
   or public.owns_wasil_store(store_id)
