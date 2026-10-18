@@ -133,6 +133,7 @@ begin
       select 1 from public.products p2
       where p2.id = v_item.id
         and p2.store_id = p_store_id
+        and p2.is_active
         and p2.is_available
         and p2.stock_quantity >= v_item.quantity
     ) then
@@ -144,7 +145,7 @@ begin
   select count(*) into v_count
   from jsonb_to_recordset(p_items) as x(product_id uuid, quantity integer, special_instructions text)
   join public.products p on p.id = x.product_id
-  where p.store_id = p_store_id and p.is_available and p.stock_quantity >= x.quantity;
+  where p.store_id = p_store_id and p.is_active and p.is_available and p.stock_quantity >= x.quantity;
 
   if v_count <> jsonb_array_length(p_items) then
     raise exception 'One or more products are missing, unavailable, out of stock, or belong to another store'
