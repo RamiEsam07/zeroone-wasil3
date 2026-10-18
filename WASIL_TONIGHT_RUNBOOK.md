@@ -5,12 +5,12 @@ This document is a practical checklist, not a claim that tests have already pass
 ## Current safety boundary
 
 - Review and corrective commits are isolated on `fix/wasil-foundation-review`; keep `main` unchanged. Do not merge this branch or the foundation PR until code review, SQL validation in a disposable environment, and Android build checks are complete.
-- All four role-specific Android apps (customer, merchant/store, driver, admin) now have Supabase-backed login gates and role-specific repository wiring on isolated review branches. The latest merchant, driver and admin debug builds passed CI; the customer build and database smoke tests are being re-run after the latest foundation changes. Real Google OAuth/Supabase runtime flows still require provider configuration and device testing.
+- All four role-specific Android apps (customer, merchant/store, driver, admin) have Supabase-backed login gates and role-specific repository wiring on isolated review branches. The latest customer Android build and PostgreSQL migration/security smoke test passed on review commit `720ed937`; the latest merchant, driver and admin Android builds also passed on their current review commits. These are CI checks, not real-device or live-Supabase runtime verification.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
 - Supabase Auth session persistence uses Android Keystore encryption and refreshes near expiry; this still requires runtime verification on an emulator/device.
-- The current order RPC is cash-on-delivery only. Initial server-side delivery, service and tax settings default to zero; the store delivery fee and configured distance/tax rules are calculated on the server. Confirm and test the approved business rates before launch.
+- The current order RPC is cash-on-delivery only. Initial server-side base delivery, service and tax settings default to zero; store delivery fee, minimum order and configured distance/tax rules are calculated on the server. Keep non-zero platform fees/tax disabled until checkout estimates are validated against server quotes.
 
 ## Before touching the live Supabase project
 
@@ -47,7 +47,9 @@ The GitHub Actions workflows `Android build check` and `Supabase migration smoke
 | Two customers order the last unit concurrently | At most one succeeds |
 | Two drivers accept the same ready order concurrently | Exactly one succeeds |
 | One driver attempts to accept two orders concurrently | Second acceptance is rejected |
-| Driver attempts to mark available with an active delivery | Rejected |
+| Driver attempts to mark available or go offline with an active delivery | Rejected |
+| Driver publishes coordinates | Only an active driver can call the location RPC; the server stamps `last_location_at`; direct client timestamp/coordinate writes are denied |
+| Auto-assignment runs | Only an active available driver with a fresh location, no active order, and distance within the configured radius is eligible |
 | Merchant changes a status outside placed → confirmed → preparing → ready_for_pickup | Rejected |
 | Unassigned driver changes an order status | Rejected |
 | Customer cancels own placed/confirmed order | Cancelled and stock restored once |
@@ -63,9 +65,9 @@ The GitHub Actions workflows `Android build check` and `Supabase migration smoke
 1. Add the project's Supabase URL, publishable key, and Google Web OAuth client ID to the customer app's local `local.properties` only; do not commit OAuth secrets.
 2. Sync Gradle and build each of the four apps independently.
 3. Fix compile/configuration errors before connecting screens.
-4. The customer-side contracts for catalog, addresses, create order, order history and cancellation are wired to Supabase. Validate them end-to-end; then integrate merchant status, driver accept/status and admin provisioning in the role-specific app repositories.
+4. Customer catalog, addresses, order creation/history/cancellation, merchant store/product onboarding and order-status RPCs, driver acceptance/status/location publishing, and admin provisioning/settings are wired to Supabase. Validate each flow end-to-end with disposable test accounts.
 5. Use a real user's access token for authenticated PostgREST/RPC calls. Never treat the publishable key as user authorization.
-7. Confirm session persistence, sign-out, token expiry/refresh, loading/error states, and offline/network failure behavior.
+6. Confirm session persistence, sign-out, token expiry/refresh, loading/error states, and offline/network failure behavior.
 7. Test on an emulator/device with test accounts and disposable data.
 
 ## Launch blockers to resolve
@@ -77,7 +79,8 @@ The GitHub Actions workflows `Android build check` and `Supabase migration smoke
 - Push notifications and Supabase Realtime remain follow-up work; customer order/history screens currently poll order status every 15 seconds while visible.
 - Driver commission/settlement ledger and limits, if commissions are part of launch.
 - Privacy/retention rules for precise customer/driver location.
-- Automated SQL concurrency tests and successful builds for all four apps.
+- Device-level Google OAuth/session tests and live Supabase end-to-end tests for all four apps.
+- Verify store coordinates can be entered in merchant onboarding/profile and that driver GPS permission/location publishing works only while available or on an active delivery.
 
 ## Tonight's completion criteria
 
