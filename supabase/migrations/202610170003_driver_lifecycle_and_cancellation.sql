@@ -149,6 +149,7 @@ begin
 
   update public.orders
      set status = p_next_status,
+         picked_up_at = case when p_next_status = 'picked_up' then now() else picked_up_at end,
          delivered_at = case when p_next_status = 'delivered' then now() else delivered_at end,
          updated_at = now()
    where id = p_order_id;
