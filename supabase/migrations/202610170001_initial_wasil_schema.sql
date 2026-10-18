@@ -127,6 +127,7 @@ create table public.orders (
   service_fee numeric(12,2) not null default 250 check (service_fee >= 0),
   total numeric(12,2) not null default 0 check (total >= 0),
   customer_notes text,
+  idempotency_key uuid,
   store_name_snapshot text not null default '',
   store_phone_snapshot text,
   store_image_snapshot text,
@@ -136,7 +137,8 @@ create table public.orders (
   cancellation_reason text,
   placed_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  delivered_at timestamptz
+  delivered_at timestamptz,
+  constraint orders_customer_idempotency_key_unique unique (customer_id, idempotency_key)
 );
 
 create table public.order_items (
