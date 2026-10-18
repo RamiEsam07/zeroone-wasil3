@@ -23,6 +23,15 @@ declare
   v_count integer;
   v_distinct_count integer;
   v_subtotal numeric(12,2) := 0;
+  v_delivery_fee numeric(12,2) := 0;
+  v_service_fee numeric(12,2) := 0;
+  v_tax_amount numeric(12,2) := 0;
+  v_distance_km numeric(8,2) := 0;
+  v_store_lat double precision;
+  v_store_lon double precision;
+  v_address_lat double precision;
+  v_address_lon double precision;
+  v_settings public.platform_settings%rowtype;
 begin
   if v_uid is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -89,6 +98,27 @@ begin
     raise exception 'Store is not currently accepting orders' using errcode = '22023';
   end if;
 
+  select * into v_settings from public.platform_settings where id = true;
+  select s.latitude, s.longitude, a.latitude, a.longitude
+    into v_store_lat, v_store_lon, v_address_lat, v_address_lon
+  from public.stores s
+  join public.addresses a on a.id = p_address_id
+  where s.id = p_store_id;
+
+  if v_store_lat is not null and v_store_lon is not null
+     and v_address_lat is not null and v_address_lon is not null then
+    v_distance_km := round((
+      acos(least(1.0, greatest(-1.0,
+        sin(radians(v_store_lat)) * sin(radians(v_address_lat))
+        + cos(radians(v_store_lat)) * cos(radians(v_address_lat))
+        * cos(radians(v_address_lon - v_store_lon))
+      ))) * 6371.0
+    )::numeric, 2);
+    if v_distance_km > v_settings.max_delivery_radius_km then
+      raise exception 'Delivery address is outside the configured service radius' using errcode = '22023';
+    end if;
+  end if;
+
   -- Lock all requested product rows in a stable order to avoid overselling and reduce deadlocks.
   for v_item in
     select p.id, p.price, p.name_ar, p.stock_quantity, x.quantity, x.special_instructions
@@ -120,17 +150,23 @@ begin
       using errcode = '22023';
   end if;
 
-  -- Until delivery pricing is configured server-side, use a fixed zero fee rather than trusting the client.
+  v_delivery_fee := round(v_settings.base_delivery_fee + (v_distance_km * v_settings.fee_per_km), 2);
+  v_service_fee := 0;
+  v_tax_amount := round(v_subtotal * v_settings.tax_rate_percent / 100, 2);
+
+  -- All prices are calculated from trusted server-side settings and product rows.
   -- Electronic payment is intentionally not accepted until a payment provider is configured.
   insert into public.orders (
     customer_id, store_id, address_id, status, payment_method, payment_status,
-    currency, subtotal, delivery_fee, service_fee, total, customer_notes, idempotency_key,
+    currency, subtotal, delivery_fee, service_fee, tax_amount, distance_km, total, customer_notes, idempotency_key,
     customer_name_snapshot, customer_phone_snapshot,
     store_name_snapshot, store_phone_snapshot, store_image_snapshot,
     delivery_address_snapshot, recipient_name_snapshot, recipient_phone_snapshot
   ) values (
     v_uid, p_store_id, p_address_id, 'placed', 'cash_on_delivery', 'pending',
-    'SDG', v_subtotal, 0, 250, v_subtotal + 250, left(p_customer_notes, 1000), p_idempotency_key,
+    'SDG', v_subtotal, v_delivery_fee, v_service_fee, v_tax_amount, v_distance_km,
+    v_subtotal + v_delivery_fee + v_service_fee + v_tax_amount,
+    left(p_customer_notes, 1000), p_idempotency_key,
     coalesce((select p.full_name from public.profiles p where p.id = v_uid), ''),
     coalesce((select p.phone from public.profiles p where p.id = v_uid), ''),
     (select s.name_ar from public.stores s where s.id = p_store_id),
