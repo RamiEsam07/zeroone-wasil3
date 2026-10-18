@@ -58,7 +58,7 @@ class SupabaseDeliveryApiService(
         onlyOpen: Boolean,
     ): Result<List<Store>> = ioResult {
         val rows = getArray(
-            "rest/v1/stores?select=*,category:categories(slug)&is_active=eq.true&is_open=eq.true&order=name_ar.asc"
+            "rest/v1/stores?select=*,category:categories(slug)&is_active=eq.true&order=name_ar.asc"
         )
         buildList {
             for (i in 0 until rows.length()) {
@@ -317,8 +317,8 @@ class SupabaseDeliveryApiService(
             rating = 0.0,
             reviewCount = 0,
             deliveryTimeMinutes = 35,
-            deliveryFee = 0.0,
-            minOrderAmount = 0.0,
+            deliveryFee = optDouble("delivery_fee", 0.0),
+            minOrderAmount = optDouble("min_order_amount", 0.0),
             isOpen = optBoolean("is_open", false),
             area = optString("address_text"),
             distanceKm = 0.0,
