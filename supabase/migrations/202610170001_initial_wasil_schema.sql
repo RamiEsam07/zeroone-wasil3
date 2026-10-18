@@ -134,6 +134,7 @@ create table public.order_items (
   order_id uuid not null references public.orders(id) on delete cascade,
   product_id uuid references public.products(id) on delete set null,
   product_name_snapshot text not null,
+  special_instructions text not null default '',
   unit_price numeric(12,2) not null check (unit_price >= 0),
   quantity integer not null check (quantity > 0),
   line_total numeric(12,2) generated always as (unit_price * quantity) stored
