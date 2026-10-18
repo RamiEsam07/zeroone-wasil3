@@ -4,7 +4,7 @@ This document is a practical checklist, not a claim that tests have already pass
 
 ## Current safety boundary
 
-- Keep all work on `feat/wasil-supabase-foundation` and the existing draft PR. Do not merge into `main` yet.
+- Review and corrective commits are isolated on `fix/wasil-foundation-review`; keep `main` unchanged. Do not merge this branch or the foundation PR until code review, SQL validation in a disposable environment, and Android build checks are complete.
 - The four app PRs are a low-level Supabase foundation; their existing screens and repositories are not yet proven to use Supabase.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
