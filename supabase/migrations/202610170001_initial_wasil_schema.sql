@@ -232,6 +232,7 @@ after update of email on auth.users
 for each row
 when (old.email is distinct from new.email)
 execute procedure public.sync_auth_user_email();
+revoke all on function public.sync_auth_user_email() from public, anon, authenticated;
 
 create or replace function public.set_updated_at()
 returns trigger
