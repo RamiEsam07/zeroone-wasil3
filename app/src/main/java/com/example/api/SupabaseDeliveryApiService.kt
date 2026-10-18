@@ -13,6 +13,8 @@ import com.example.model.Store
 import com.example.model.StoreCategory
 import com.example.model.SudanCity
 import org.json.JSONArray
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -24,6 +26,9 @@ import java.nio.charset.StandardCharsets
 class SupabaseDeliveryApiService(
     private val client: SupabaseRestClient = SupabaseRestClient(),
 ) : DeliveryApiService {
+
+    private suspend fun <T> ioResult(block: suspend () -> T): Result<T> =
+        withContext(Dispatchers.IO) { runCatching { block() } }
 
     private fun currentSession(): SupabaseSession =
         SupabaseSessionProvider.session
@@ -51,7 +56,7 @@ class SupabaseDeliveryApiService(
         category: StoreCategory?,
         query: String?,
         onlyOpen: Boolean,
-    ): Result<List<Store>> = runCatching {
+    ): Result<List<Store>> = ioResult {
         val rows = getArray(
             "rest/v1/stores?select=*,category:categories(slug)&is_active=eq.true&is_open=eq.true&order=name_ar.asc"
         )
@@ -72,13 +77,13 @@ class SupabaseDeliveryApiService(
         }
     }
 
-    override suspend fun getStoreById(storeId: String): Result<Store> = runCatching {
+    override suspend fun getStoreById(storeId: String): Result<Store> = ioResult {
         val rows = getArray("rest/v1/stores?select=*,category:categories(slug)&id=eq." + safeValue(storeId))
         check(rows.length() > 0) { "المتجر غير موجود أو غير متاح حالياً." }
         rows.getJSONObject(0).toStore()
     }
 
-    override suspend fun getStoreProducts(storeId: String, category: String?): Result<List<Product>> = runCatching {
+    override suspend fun getStoreProducts(storeId: String, category: String?): Result<List<Product>> = ioResult {
         val rows = getArray(
             "rest/v1/products?select=*&store_id=eq." + safeValue(storeId) + "&is_available=eq.true&order=name_ar.asc"
         )
@@ -91,13 +96,13 @@ class SupabaseDeliveryApiService(
         }
     }
 
-    override suspend fun getProductById(productId: String): Result<Product> = runCatching {
+    override suspend fun getProductById(productId: String): Result<Product> = ioResult {
         val rows = getArray("rest/v1/products?select=*&id=eq." + safeValue(productId))
         check(rows.length() > 0) { "المنتج غير موجود أو غير متاح حالياً." }
         rows.getJSONObject(0).toProduct()
     }
 
-    override suspend fun getAddresses(): Result<List<Address>> = runCatching {
+    override suspend fun getAddresses(): Result<List<Address>> = ioResult {
         val session = currentSession()
         val rows = getArray(
             "rest/v1/addresses?select=*&customer_id=eq." + safeValue(session.userId) + "&order=is_default.desc,created_at.desc",
@@ -108,7 +113,7 @@ class SupabaseDeliveryApiService(
         }
     }
 
-    override suspend fun addAddress(address: Address): Result<Address> = runCatching {
+    override suspend fun addAddress(address: Address): Result<Address> = ioResult {
         val session = currentSession()
         val details = listOf(address.buildingNumber, address.floorOrApartment, address.landmark)
             .filter { it.isNotBlank() }.joinToString("، ")
@@ -138,7 +143,7 @@ class SupabaseDeliveryApiService(
         }
     }
 
-    override suspend fun setDefaultAddress(addressId: String): Result<Address> = runCatching {
+    override suspend fun setDefaultAddress(addressId: String): Result<Address> = ioResult {
         val response = client.rest(
             tableOrRpcPath = "rest/v1/rpc/wasil_set_default_address",
             method = "POST",
@@ -149,7 +154,7 @@ class SupabaseDeliveryApiService(
         getAddressById(addressId)
     }
 
-    override suspend fun createOrder(request: CreateOrderRequest): Result<Order> = runCatching {
+    override suspend fun createOrder(request: CreateOrderRequest): Result<Order> = ioResult {
         require(request.paymentMethod == PaymentMethod.CASH_ON_DELIVERY) {
             "الدفع الإلكتروني غير مفعّل بعد؛ اختر الدفع نقداً عند الاستلام."
         }
@@ -177,7 +182,7 @@ class SupabaseDeliveryApiService(
         getOrderById(response).getOrThrow()
     }
 
-    override suspend fun getOrderById(orderId: String): Result<Order> = runCatching {
+    override suspend fun getOrderById(orderId: String): Result<Order> = ioResult {
         val rows = getArray(
             "rest/v1/orders?select=*&id=eq." + safeValue(orderId),
             authenticated = true,
@@ -186,7 +191,7 @@ class SupabaseDeliveryApiService(
         rows.getJSONObject(0).toOrder()
     }
 
-    override suspend fun getMyOrders(): Result<List<Order>> = runCatching {
+    override suspend fun getMyOrders(): Result<List<Order>> = ioResult {
         val session = currentSession()
         val rows = getArray(
             "rest/v1/orders?select=*&customer_id=eq." + safeValue(session.userId) + "&order=placed_at.desc",
@@ -197,7 +202,7 @@ class SupabaseDeliveryApiService(
         orders
     }
 
-    override suspend fun cancelOrder(orderId: String): Result<Order> = runCatching {
+    override suspend fun cancelOrder(orderId: String): Result<Order> = ioResult {
         val response = client.rest(
             tableOrRpcPath = "rest/v1/rpc/wasil_cancel_order",
             method = "POST",
@@ -338,7 +343,7 @@ class SupabaseDeliveryApiService(
 
     private fun JSONObject.toAddress(): Address {
         val cityName = optString("city").takeIf { it.isNotBlank() } ?: "KHARTOUM"
-        val city = runCatching { SudanCity.valueOf(cityName) }.getOrDefault(SudanCity.KHARTOUM)
+        val city = ioResult { SudanCity.valueOf(cityName) }.getOrDefault(SudanCity.KHARTOUM)
         return Address(
             id = optString("id"),
             title = optString("label").ifBlank { "عنوان التوصيل" },
