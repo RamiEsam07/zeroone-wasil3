@@ -263,6 +263,14 @@ class DeliveryRepositoryImpl(
         }
     }
 
+    override fun clearCustomerData() {
+        _cartFlow.value = Cart()
+        _addressesFlow.value = emptyList()
+        _selectedAddressFlow.value = null
+        _ordersFlow.value = emptyList()
+        _activeOrderFlow.value = null
+    }
+
     override suspend fun getOrderById(orderId: String): Result<Order> {
         return apiService.getOrderById(orderId)
     }
