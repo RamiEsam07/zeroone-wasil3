@@ -483,6 +483,7 @@ begin
            and p.is_active
            and d.latitude is not null
            and d.longitude is not null
+           and d.last_location_at >= now() - interval '10 minutes'
        )
      ) then
     raise exception 'Auto-assignment requires at least one active store and active driver with coordinates. Keep it disabled until location data is configured.'
