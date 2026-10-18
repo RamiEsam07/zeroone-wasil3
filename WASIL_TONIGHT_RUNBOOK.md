@@ -35,6 +35,7 @@ This document is a practical checklist, not a claim that tests have already pass
 | Customer reads another customer's address | Denied |
 | Customer directly inserts/updates an order or order item | Denied |
 | Customer creates an order with a valid address and in-stock items | Order + snapshots created atomically; stock decreases once |
+| Same customer retries the same order with the same idempotency key | Existing order is returned; stock is not decremented again |
 | Customer submits a product from another store, unavailable item, duplicate ID, invalid quantity, or insufficient stock | Entire transaction fails; no order/stock change |
 | Two customers order the last unit concurrently | At most one succeeds |
 | Two drivers accept the same ready order concurrently | Exactly one succeeds |
@@ -63,7 +64,7 @@ This document is a practical checklist, not a claim that tests have already pass
 ## Launch blockers to resolve
 
 - Bootstrap the first admin through a trusted Supabase SQL Editor/service-role workflow; then test the admin provisioning RPCs for merchant/driver/customer roles and store approval.
-- Idempotency key for order creation so network retries cannot create duplicate orders.
+- Validate order idempotency under retry and concurrent duplicate requests; the draft RPC/client key path is implemented but not yet tested.
 - Server-side delivery-fee rules and who receives the fee.
 - Payment-provider integration before enabling electronic payment.
 - Order notifications/realtime behavior and retry strategy.
