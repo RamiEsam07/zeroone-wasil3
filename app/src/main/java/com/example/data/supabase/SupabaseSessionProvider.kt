@@ -7,4 +7,23 @@ package com.example.data.supabase
 object SupabaseSessionProvider {
     @Volatile
     var session: SupabaseSession? = null
+
+    @Volatile
+    var sessionRefresher: (suspend (SupabaseSession) -> SupabaseSession)? = null
+
+    suspend fun validSessionOrNull(): SupabaseSession? {
+        val current = session ?: return null
+        if (!current.expiresSoon()) return current
+        val refresher = sessionRefresher ?: return current
+        return try {
+            refresher(current).also { session = it }
+        } catch (error: Exception) {
+            if (error.message.orEmpty().contains("HTTP 400") ||
+                error.message.orEmpty().contains("HTTP 401")
+            ) {
+                session = null
+            }
+            throw error
+        }
+    }
 }
