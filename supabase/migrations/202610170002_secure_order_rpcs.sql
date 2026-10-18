@@ -125,11 +125,14 @@ begin
   insert into public.orders (
     customer_id, store_id, address_id, status, payment_method, payment_status,
     currency, subtotal, delivery_fee, service_fee, total, customer_notes, idempotency_key,
+    customer_name_snapshot, customer_phone_snapshot,
     store_name_snapshot, store_phone_snapshot, store_image_snapshot,
     delivery_address_snapshot, recipient_name_snapshot, recipient_phone_snapshot
   ) values (
     v_uid, p_store_id, p_address_id, 'placed', 'cash_on_delivery', 'pending',
     'SDG', v_subtotal, 0, 250, v_subtotal + 250, left(p_customer_notes, 1000), p_idempotency_key,
+    coalesce((select p.full_name from public.profiles p where p.id = v_uid), ''),
+    coalesce((select p.phone from public.profiles p where p.id = v_uid), ''),
     (select s.name_ar from public.stores s where s.id = p_store_id),
     (select s.phone from public.stores s where s.id = p_store_id),
     (select s.image_url from public.stores s where s.id = p_store_id),
