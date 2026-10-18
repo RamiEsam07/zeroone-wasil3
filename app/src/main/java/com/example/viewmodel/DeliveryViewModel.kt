@@ -115,6 +115,17 @@ class DeliveryViewModel(
         }
     }
 
+    fun refreshOrdersNow() {
+        viewModelScope.launch {
+            repository.refreshOrders()
+            _trackedOrder.value?.let { current ->
+                repository.getOrderById(current.id).onSuccess { refreshed ->
+                    _trackedOrder.value = refreshed
+                }
+            }
+        }
+    }
+
     fun refreshBackendData() {
         viewModelScope.launch {
             repository.refreshStores(_selectedCategoryFilter.value, _searchQuery.value)
