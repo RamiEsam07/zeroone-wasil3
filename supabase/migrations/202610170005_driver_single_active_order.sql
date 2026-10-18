@@ -8,7 +8,7 @@ begin;
 -- Drivers may update their vehicle/location fields, never availability or commission.
 revoke insert on public.driver_profiles from authenticated;
 revoke update on public.driver_profiles from authenticated;
-grant update (vehicle_type, latitude, longitude, last_location_at)
+grant update (vehicle_type)
   on public.driver_profiles to authenticated;
 
 create or replace function public.wasil_set_driver_availability(p_is_available boolean)
@@ -213,6 +213,46 @@ end;
 $available_orders$;
 revoke all on function public.wasil_list_available_orders() from public, anon;
 grant execute on function public.wasil_list_available_orders() to authenticated;
+
+create or replace function public.wasil_driver_update_location(
+  p_latitude double precision,
+  p_longitude double precision
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $wasil_driver_update_location$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+  if not public.current_wasil_account_active()
+     or public.current_wasil_role() is distinct from 'driver'::public.wasil_role then
+    raise exception 'Active driver account required' using errcode = '42501';
+  end if;
+  if p_latitude is null or p_latitude < -90 or p_latitude > 90
+     or p_longitude is null or p_longitude < -180 or p_longitude > 180 then
+    raise exception 'Valid latitude and longitude are required' using errcode = '22023';
+  end if;
+
+  update public.driver_profiles
+     set latitude = p_latitude,
+         longitude = p_longitude,
+         last_location_at = now(),
+         updated_at = now()
+   where profile_id = v_uid;
+  if not found then
+    raise exception 'Driver profile must be provisioned by an administrator' using errcode = '42501';
+  end if;
+  return true;
+end;
+$wasil_driver_update_location$;
+
+revoke all on function public.wasil_driver_update_location(double precision, double precision) from public, anon;
+grant execute on function public.wasil_driver_update_location(double precision, double precision) to authenticated;
 
 commit;
 
