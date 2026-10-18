@@ -115,6 +115,15 @@ class DeliveryViewModel(
         }
     }
 
+    fun clearCustomerData() {
+        repository.clearCustomerData()
+        _trackedOrder.value = null
+        _selectedStore.value = null
+        _storeProducts.value = emptyList()
+        _selectedStoreCategory.value = "الكل"
+        _productModalState.value = ProductDetailModalState()
+    }
+
     fun refreshOrdersNow() {
         viewModelScope.launch {
             repository.refreshOrders()
