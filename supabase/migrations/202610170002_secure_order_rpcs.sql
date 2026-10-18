@@ -29,6 +29,7 @@ declare
   v_distance_km numeric(8,2) := 0;
   v_store_lat double precision;
   v_store_lon double precision;
+  v_store_delivery_fee numeric(12,2) := 0;
   v_address_lat double precision;
   v_address_lon double precision;
   v_settings public.platform_settings%rowtype;
@@ -99,8 +100,8 @@ begin
   end if;
 
   select * into v_settings from public.platform_settings where id = true;
-  select s.latitude, s.longitude, a.latitude, a.longitude
-    into v_store_lat, v_store_lon, v_address_lat, v_address_lon
+  select s.latitude, s.longitude, s.delivery_fee, a.latitude, a.longitude
+    into v_store_lat, v_store_lon, v_store_delivery_fee, v_address_lat, v_address_lon
   from public.stores s
   join public.addresses a on a.id = p_address_id
   where s.id = p_store_id;
@@ -150,7 +151,8 @@ begin
       using errcode = '22023';
   end if;
 
-  v_delivery_fee := round(v_settings.base_delivery_fee + (v_distance_km * v_settings.fee_per_km), 2);
+  v_delivery_fee := round(greatest(v_settings.base_delivery_fee, coalesce(v_store_delivery_fee, 0))
+    + (v_distance_km * v_settings.fee_per_km), 2);
   v_service_fee := 0;
   v_tax_amount := round(v_subtotal * v_settings.tax_rate_percent / 100, 2);
 
