@@ -327,6 +327,8 @@ begin
     and d.is_available
     and v_store_lat is not null and v_store_lon is not null
     and d.latitude is not null and d.longitude is not null
+    and d.last_location_at is not null
+    and d.last_location_at >= now() - interval '10 minutes'
     and (
       acos(least(1.0, greatest(-1.0,
         sin(radians(v_store_lat)) * sin(radians(d.latitude))
