@@ -6,6 +6,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -19,6 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.data.supabase.SecureSessionStore
 import com.example.data.supabase.SupabaseAuthRepository
 import com.example.data.supabase.SupabaseSession
+import com.example.data.supabase.SupabaseSessionProvider
+import com.example.api.SupabaseDeliveryApiService
+import com.example.repository.DeliveryRepositoryImpl
 import com.example.ui.screens.WasilLoginScreen
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -62,7 +67,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: DeliveryViewModel by viewModels()
+    private val viewModel: DeliveryViewModel by viewModels { WasilViewModelFactory() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +81,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+private class WasilViewModelFactory : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DeliveryViewModel::class.java)) {
+            return DeliveryViewModel(
+                DeliveryRepositoryImpl(SupabaseDeliveryApiService())
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: " + modelClass.name)
     }
 }
 
@@ -94,7 +111,11 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
 
     LaunchedEffect(authRepository) {
         authRepository.restoreSession()
-            .onSuccess { session = it }
+            .onSuccess {
+                session = it
+                SupabaseSessionProvider.session = it
+                if (it != null) viewModel.refreshBackendData()
+            }
             .onFailure { errorMessage = it.message }
         restoringSession = false
     }
@@ -141,7 +162,11 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
                                 throw IllegalStateException("لم يتم استلام بيانات تسجيل دخول Google المتوقعة.")
                             }
                             authRepository.signInWithGoogleIdToken(idToken)
-                                .onSuccess { session = it }
+                                .onSuccess {
+                                    session = it
+                                    SupabaseSessionProvider.session = it
+                                    viewModel.refreshBackendData()
+                                }
                                 .onFailure { errorMessage = it.message ?: "تعذر تسجيل الدخول." }
                         } catch (error: Exception) {
                             errorMessage = error.message ?: "تعذر تسجيل الدخول باستخدام Google."
@@ -159,6 +184,7 @@ private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
                     scope.launch {
                         authRepository.signOut(session)
                             .onFailure { errorMessage = it.message }
+                        SupabaseSessionProvider.session = null
                         session = null
                     }
                 },
