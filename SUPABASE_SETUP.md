@@ -21,6 +21,7 @@ GOOGLE_WEB_CLIENT_ID=YOUR_WEB_OAUTH_CLIENT_ID.apps.googleusercontent.com
 ```
 
 4. Sync Gradle. The app reads these values into BuildConfig at build time.
+5. For Google Cloud Android OAuth, register the customer app package `com.aistudio.wasildelivery.kpqmzx` with its debug and release SHA-1 fingerprints. The merchant, driver and admin apps each have their own package ID and setup note in their review branches.
 5. Configure Google as an Auth provider in Supabase and use the matching Web OAuth client ID in `local.properties`. Verify Android package name and SHA-1 fingerprints in Google Cloud. Phone/SMS OTP is deferred and is not presented in the current login screen.
 
 Security:
