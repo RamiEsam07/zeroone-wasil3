@@ -240,7 +240,7 @@ declare
 begin
   v_order_id := public.wasil_create_order(
     '10000000-0000-0000-0000-000000000001',
-    (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' order by created_at limit 1),
+    (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' and label = 'Home' order by created_at limit 1),
     jsonb_build_array(jsonb_build_object(
       'product_id', '20000000-0000-0000-0000-000000000001',
       'quantity', 2,
@@ -252,7 +252,7 @@ begin
 
   v_retry_order_id := public.wasil_create_order(
     '10000000-0000-0000-0000-000000000001',
-    (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' order by created_at limit 1),
+    (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' and label = 'Home' order by created_at limit 1),
     jsonb_build_array(jsonb_build_object(
       'product_id', '20000000-0000-0000-0000-000000000001',
       'quantity', 2,
@@ -322,7 +322,7 @@ begin
   begin
     perform public.wasil_create_order(
       '10000000-0000-0000-0000-000000000001',
-      (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' order by created_at limit 1),
+      (select id from public.addresses where customer_id = '00000000-0000-0000-0000-000000000001' and label = 'Home' order by created_at limit 1),
       jsonb_build_array(jsonb_build_object(
         'product_id', '20000000-0000-0000-0000-000000000001',
         'quantity', 1,
