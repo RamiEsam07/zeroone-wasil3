@@ -6,12 +6,19 @@ This is the current source of truth for the review branch. It separates code cha
 
 ## Safety and branch state
 
-- Working branch: **fix/wasil-foundation-review**
+- Working branch: **ops/wasil-integration-audit** (isolated operations/audit branch based on `fix/wasil-foundation-review`)
 - Draft pull request: https://github.com/RamiEsam07/zeroone-wasil3/pull/2
 - **main is unchanged; nothing has been merged.**
 - SQL migrations are drafts and have not been applied to the live Supabase project.
 - No Supabase secret/service-role key is stored in Android code or committed configuration.
-- The customer app is reviewed here. Isolated review branches also contain Google/Supabase role gates and Supabase data/RPC wiring for merchant (`zeroone-wasil`), driver (`zeroone-wasil4`) and admin (`zeoone---wasil`). Prior revisions passed CI across all four apps; the latest session-refresh and financial-display edits have triggered fresh checks. Verify the exact current head commit in each workflow before merge; the repositories remain separate and no changes are merged.
+- The customer app and three role-specific apps are being tracked in isolated `ops/wasil-integration-audit` branches. Android build workflows have been updated to trigger on these branches. The audit docs in each role repository record verified code paths and outstanding release gates. Do not infer a passing build from an empty status response; verify each workflow run against its exact head commit before merge. Repositories remain separate and no changes are merged.
+
+## Cross-app operational audit — not yet release-approved
+
+- Merchant: role-gated Google/Supabase sign-in, store onboarding actions and category loading are present in the inspected entry/view-model path. Live OAuth, RLS and store approval are not verified.
+- Driver: Supabase-backed driver repository and location publication are present. Real-device permission/lifecycle behavior and order assignment are not verified.
+- Admin: role-gated entry and Supabase-backed repository operations are present. Some multi-step writes can partially persist; see `WASIL_INTEGRATION_AUDIT.md` in the admin repository. Atomicity and all RLS/RPC permissions remain release gates.
+- CI: build workflows now include the operations branch. Latest successful checks for the exact current heads have not yet been confirmed in this audit.
 
 ## Implemented in code — not yet fully runtime-verified
 
