@@ -184,10 +184,10 @@ insert into auth.users (id, phone, raw_user_meta_data) values
 
 insert into public.addresses (
   customer_id, label, address_text, city, area, street, building_number,
-  recipient_name, recipient_phone
+  recipient_name, recipient_phone, latitude, longitude
 ) values
-  ('00000000-0000-0000-0000-000000000001', 'Home', 'Customer one address', 'KHARTOUM', 'Area 1', 'Street 1', '1', 'Customer One', '+249900000001'),
-  ('00000000-0000-0000-0000-000000000002', 'Home', 'Customer two address', 'KHARTOUM', 'Area 2', 'Street 2', '2', 'Customer Two', '+249900000002');
+  ('00000000-0000-0000-0000-000000000001', 'Home', 'Customer one address', 'KHARTOUM', 'Area 1', 'Street 1', '1', 'Customer One', '+249900000001', 15.5900, 32.5600),
+  ('00000000-0000-0000-0000-000000000002', 'Home', 'Customer two address', 'KHARTOUM', 'Area 2', 'Street 2', '2', 'Customer Two', '+249900000002', 15.5910, 32.5610);
 
 update public.profiles
    set role = 'merchant'::public.wasil_role
@@ -232,6 +232,7 @@ declare
   v_second_address_id uuid;
   v_stock integer;
   v_total numeric(12,2);
+  v_distance numeric(8,2);
   v_minimum_rejected boolean := false;
   v_offline_rejected boolean := false;
 begin
@@ -272,6 +273,11 @@ begin
   select total into v_total from public.orders where id = v_order_id;
   if v_total <> 24.50 then
     raise exception 'Server-calculated order total is wrong: expected 24.50, got %', v_total;
+  end if;
+
+  select distance_km into v_distance from public.orders where id = v_order_id;
+  if v_distance <= 0 then
+    raise exception 'Server did not calculate delivery distance from available coordinates';
   end if;
 
   update public.stores set min_order_amount = 25.00
