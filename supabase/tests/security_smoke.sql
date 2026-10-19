@@ -230,9 +230,11 @@ declare
   v_order_id uuid;
   v_retry_order_id uuid;
   v_second_address_id uuid;
+  v_far_address_id uuid;
   v_stock integer;
   v_total numeric(12,2);
   v_distance numeric(8,2);
+  v_radius_rejected boolean := false;
   v_minimum_rejected boolean := false;
   v_offline_rejected boolean := false;
 begin
@@ -278,6 +280,41 @@ begin
   select distance_km into v_distance from public.orders where id = v_order_id;
   if v_distance <= 0 then
     raise exception 'Server did not calculate delivery distance from available coordinates';
+  end if;
+
+  insert into public.addresses (
+    customer_id, label, address_text, city, area, street, building_number,
+    recipient_name, recipient_phone, latitude, longitude
+  ) values (
+    '00000000-0000-0000-0000-000000000001', 'Far', 'Far-away address',
+    'FAR_AWAY', 'Far area', 'Far street', '9', 'Customer One', '+249900000001',
+    0.0, 0.0
+  ) returning id into v_far_address_id;
+
+  update public.platform_settings set max_delivery_radius_km = 1 where id = true;
+  begin
+    perform public.wasil_create_order(
+      '10000000-0000-0000-0000-000000000001',
+      v_far_address_id,
+      jsonb_build_array(jsonb_build_object(
+        'product_id', '20000000-0000-0000-0000-000000000001',
+        'quantity', 1,
+        'special_instructions', ''
+      )),
+      '30000000-0000-0000-0000-000000000004',
+      'Out-of-radius smoke test'
+    );
+  exception when sqlstate '22023' then
+    v_radius_rejected := true;
+  end;
+  if not v_radius_rejected then
+    raise exception 'Order outside configured delivery radius was not rejected';
+  end if;
+  update public.platform_settings set max_delivery_radius_km = 25 where id = true;
+  select stock_quantity into v_stock
+  from public.products where id = '20000000-0000-0000-0000-000000000001';
+  if v_stock <> 1 then
+    raise exception 'Rejected out-of-radius order changed product stock';
   end if;
 
   update public.stores set min_order_amount = 25.00
