@@ -1,14 +1,23 @@
 -- ONE-TIME, TRUSTED SETUP ONLY.
--- Run manually in the Supabase SQL Editor after all reviewed migrations are applied.
+-- Run manually in the Supabase SQL Editor only after all reviewed migrations have been
+-- approved and applied to the intended environment. Never run from an Android app.
 -- First sign in with Google once so the account exists in auth.users and public.profiles.
--- Replace the UUID below with that exact public.profiles.id. Never run from the Android app.
+-- Replace BOTH placeholders with the exact profile UUID and email verified in Supabase.
+-- This double-check prevents promoting the wrong profile due to a copied UUID typo.
 
 begin;
 
 do $bootstrap_first_admin$
 declare
   v_user_id uuid := 'REPLACE_WITH_AUTH_USER_UUID'::uuid;
+  v_expected_email text := 'REPLACE_WITH_GOOGLE_EMAIL';
+  v_actual_email text;
 begin
+  if nullif(trim(v_expected_email), '') is null
+     or v_expected_email = 'REPLACE_WITH_GOOGLE_EMAIL' then
+    raise exception 'Replace the expected Google email placeholder before running this script.';
+  end if;
+
   if exists (
     select 1 from public.profiles
     where role = 'admin'::public.wasil_role and is_active
@@ -16,15 +25,24 @@ begin
     raise exception 'An active administrator already exists; use the admin provisioning workflow instead.';
   end if;
 
+  select lower(trim(email))
+    into v_actual_email
+    from public.profiles
+   where id = v_user_id;
+
+  if not found then
+    raise exception 'No profile exists for that UUID. Sign in once with Google and copy the matching profile ID.';
+  end if;
+
+  if v_actual_email is distinct from lower(trim(v_expected_email)) then
+    raise exception 'The profile email does not match the expected Google email. No role was changed.';
+  end if;
+
   update public.profiles
      set role = 'admin'::public.wasil_role,
          is_active = true,
          updated_at = now()
    where id = v_user_id;
-
-  if not found then
-    raise exception 'No profile exists for that UUID. Sign in once with Google and copy the matching auth user ID.';
-  end if;
 end;
 $bootstrap_first_admin$;
 
