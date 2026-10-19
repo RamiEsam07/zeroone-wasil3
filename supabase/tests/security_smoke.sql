@@ -59,6 +59,14 @@ begin
     raise exception 'Anonymous users must not execute admin provisioning';
   end if;
 
+  if has_function_privilege('anon', 'public.wasil_admin_update_store(uuid, text, text, text, text, boolean, boolean)', 'EXECUTE') then
+    raise exception 'Anonymous users must not execute atomic admin store updates';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.wasil_admin_update_store(uuid, text, text, text, text, boolean, boolean)', 'EXECUTE') then
+    raise exception 'Authenticated role needs the atomic admin store update RPC grant';
+  end if;
+
   if has_function_privilege('anon', 'public.wasil_list_available_orders()', 'EXECUTE') then
     raise exception 'Anonymous users must not list driver offers';
   end if;
