@@ -258,6 +258,7 @@ create trigger orders_set_updated_at before update on public.orders
 for each row execute procedure public.set_updated_at();
 create trigger driver_profiles_set_updated_at before update on public.driver_profiles
 for each row execute procedure public.set_updated_at();
+revoke all on function public.set_updated_at() from public, anon, authenticated;
 
 -- Helpers avoid recursive RLS lookups into profiles.
 create or replace function public.current_wasil_role()
