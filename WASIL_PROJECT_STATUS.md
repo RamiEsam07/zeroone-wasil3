@@ -51,7 +51,7 @@ Apply these only to a disposable Supabase/PostgreSQL environment first, in order
 
 ## Blockers before merge or launch
 
-- Keep the latest Android build and SQL smoke workflows green after every further code change; earlier runs passed, and each new commit triggers fresh validation.
+- Latest verified review commit: `f96b703bad9d5cf83620632b9c3f5f06adf41a2e` (2026-10-19). GitHub Actions Android build check run 255 **passed**, and Supabase migration smoke check run 218 **passed**. Both applied/compiled the reviewed branch; SQL ran against disposable PostgreSQL, not the live Supabase project. Any later commit must be rechecked before merge.
 - Apply all seven migrations to a disposable Supabase project (not the live project) and test role/RLS, order stock races, idempotency, cancellation and driver concurrency; CI currently validates them against a disposable PostgreSQL/Auth test schema.
 - Configure Google OAuth and run end-to-end sign-in/session refresh/sign-out.
 - Test customer catalog, address, order, cancellation and tracking flows against real test records.
