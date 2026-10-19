@@ -5,7 +5,7 @@
 begin;
 
 -- Driver profile creation is performed by the trusted admin provisioning RPC.
--- Drivers may update their vehicle/location fields, never availability or commission.
+-- Drivers may update vehicle_type directly; location, availability and commission are RPC-controlled.
 revoke insert on public.driver_profiles from authenticated;
 revoke update on public.driver_profiles from authenticated;
 grant update (vehicle_type)
