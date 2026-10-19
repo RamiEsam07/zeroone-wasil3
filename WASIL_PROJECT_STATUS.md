@@ -18,7 +18,7 @@ This is the current source of truth for the review branch. It separates code cha
 - Merchant: role-gated Google/Supabase sign-in, store onboarding actions and category loading are present in the inspected entry/view-model path. Live OAuth, RLS and store approval are not verified.
 - Driver: Supabase-backed driver repository and location publication are present. Real-device permission/lifecycle behavior and order assignment are not verified.
 - Admin: role-gated entry and Supabase-backed repository operations are present. An atomic store-edit RPC draft was added as migration `202610170008_admin_update_store_atomic.sql`, and the admin audit branch now calls it. Both sides must be validated and deployed together; no live migration has been applied. All RLS/RPC permissions remain release gates.
-- CI: build workflows now include the operations branch. Latest successful checks for the exact current heads have not yet been confirmed in this audit.
+- CI: build workflows now include the operations branch. Latest run inspection found the customer/admin builds passing on their checked commits, the driver build passing, and the merchant build failing due to duplicate named arguments in StoreRepository.kt; that compile defect has been fixed on the audit branch and must be confirmed by a rerun.
 
 ## Latest cross-app change — draft, not production applied\n\n- Added migration `supabase/migrations/202610170008_admin_update_store_atomic.sql` with `wasil_admin_update_store(...)`. It updates store name, phone, address, open state, and approval state in one database transaction, checks active administrator privileges, requires an active merchant owner before approval, and blocks deactivation while active orders exist.\n- Admin app branch now calls this RPC instead of issuing a metadata PATCH followed by a separate activation RPC. This avoids the previously identified split-write failure mode once migration 008 is applied and verified.\n- Validation still required: run the migration smoke suite against disposable PostgreSQL, build the admin Android app at the new commit, and test both success and rejection cases. Do not apply to live Supabase yet.\n\n## Implemented in code — not yet fully runtime-verified
 
@@ -33,8 +33,8 @@ This is the current source of truth for the review branch. It separates code cha
 | Retry safety | Client retains an idempotency key for retries of the same order payload; SQL RPC serializes duplicate requests for the same customer/key. | Prove retry and concurrency behavior with tests. |
 | Cancellation | Server RPC validates allowed states and restores stock in the same transaction. | Test allowed/denied roles and repeated cancellation. |
 | Tracking and dispatch | Customer order/history views poll order state every 15 seconds. Driver app requests foreground location only while available or on an active delivery and publishes coordinates through a server-timestamped RPC. Merchant onboarding/profile accepts store coordinates; auto-assignment requires fresh driver coordinates, store coordinates, availability and radius. | Verify location permissions and actual coordinates on a device; test dispatch with multiple drivers and decide on Supabase Realtime/push notifications. |
-| Admin setup | RPCs provision role/activation and approve/deactivate stores; address-default RPC and least-privilege grants are included. | Bootstrap the first admin through the guarded `supabase/bootstrap_first_admin.sql.example` template in the trusted Supabase SQL Editor after the user has signed in once with Google. Test all permissions. |
-| CI | Android debug-build workflows run on all four isolated role-app review branches. The customer/database repo also applies all seven SQL migrations to disposable PostgreSQL and runs security/functional smoke tests, including order idempotency, server pricing, coordinate-based radius rejection, driver auto-assignment/location, default-address updates and one-time stock restoration on cancellation. | Before merge, inspect the latest completed checks for the exact head commit of each branch. Green builds and disposable-database tests do not prove live Supabase, Google OAuth, or device-level end-to-end behavior. |
+| Admin setup | RPCs provision role/activation and approve/deactivate stores; address-default RPC and least-privilege grants are included. | First admin account is not yet created. After owner signs in once with Google and confirms the intended account UUID in Supabase Auth/Profiles, bootstrap only that exact account using the guarded `supabase/bootstrap_first_admin.sql.example` in the trusted SQL Editor after the reviewed migrations are validated and approved. Never execute from the client app. |
+| CI | Android debug-build workflows run on all four isolated role-app review branches. The customer/database repo applies all eight SQL migrations to disposable PostgreSQL and runs security/functional smoke tests, including order idempotency, server pricing, coordinate-based radius rejection, driver auto-assignment/location, default-address updates and one-time stock restoration on cancellation. | Before merge, inspect the latest completed checks for the exact head commit of each branch. Green builds and disposable-database tests do not prove live Supabase, Google OAuth, or device-level end-to-end behavior. |
 
 ## Database migration order
 
@@ -45,8 +45,9 @@ This is the current source of truth for the review branch. It separates code cha
 5. 202610170005_driver_single_active_order.sql
 6. 202610170006_admin_provisioning.sql
 7. 202610170007_address_default_rpc.sql
+8. 202610170008_admin_update_store_atomic.sql
 
-Apply these only to a disposable Supabase/PostgreSQL environment first, in order, and stop at the first error. The GitHub smoke workflow uses a minimal mock Auth schema; it does not prove every Supabase Auth behavior.
+Apply all eight only to a disposable Supabase/PostgreSQL environment first, in order, and stop at the first error. The migration smoke workflow is now configured to run on `ops/wasil-integration-audit`. The GitHub smoke workflow uses a minimal mock Auth schema; it does not prove every Supabase Auth behavior.
 
 ## Agreed operating decisions to preserve
 
@@ -60,7 +61,7 @@ Apply these only to a disposable Supabase/PostgreSQL environment first, in order
 
 - Latest verified review commit: `f96b703bad9d5cf83620632b9c3f5f06adf41a2e` (2026-10-19). GitHub Actions Android build check run 255 **passed**, and Supabase migration smoke check run 218 **passed**. Both applied/compiled the reviewed branch; SQL ran against disposable PostgreSQL, not the live Supabase project. Any later commit must be rechecked before merge.
 - Apply all seven migrations to a disposable Supabase project (not the live project) and test role/RLS, order stock races, idempotency, cancellation and driver concurrency; CI currently validates them against a disposable PostgreSQL/Auth test schema.
-- Configure Google OAuth and run end-to-end sign-in/session refresh/sign-out.
+- Owner reports Google OAuth is configured; still run end-to-end sign-in/session refresh/sign-out on a real device.
 - Test customer catalog, address, order, cancellation and tracking flows against real test records.
 - Review the latest builds for merchant, driver and admin role-app branches and run end-to-end tests for onboarding, store/product approval, driver acceptance/status changes and admin provisioning.
 - Approve the server-side delivery-fee, tax and service-fee policy. Initial platform fee/tax defaults are zero, and the configured store delivery fee is honored. Do not enable non-zero platform fees until checkout displays the same server-calculated quote.
