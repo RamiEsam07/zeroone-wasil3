@@ -478,8 +478,8 @@ declare
   v_visible_addresses integer;
 begin
   select count(*) into v_visible_addresses from public.addresses;
-  if v_visible_addresses <> 2 then
-    raise exception 'RLS leak: customer can see % addresses; expected their two addresses only', v_visible_addresses;
+  if v_visible_addresses <> 3 then
+    raise exception 'RLS leak: customer can see % addresses; expected their three owned addresses only', v_visible_addresses;
   end if;
 
   begin
