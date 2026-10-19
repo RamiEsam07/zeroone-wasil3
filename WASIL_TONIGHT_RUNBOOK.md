@@ -10,7 +10,16 @@ This document is a practical checklist, not a claim that tests have already pass
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
 - Supabase Auth session persistence uses Android Keystore encryption and refreshes near expiry; this still requires runtime verification on an emulator/device.
-- The current order RPC is cash-on-delivery only. Initial server-side base delivery, service and tax settings default to zero; store delivery fee, minimum order and configured distance/tax rules are calculated on the server. Keep non-zero platform fees/tax disabled until checkout estimates are validated against server quotes.
+- The current order RPC is cash-on-delivery only. Initial server-side base delivery, service, tax and platform-commission settings default to zero; store delivery fee, minimum order and configured distance/tax rules are calculated on the server. The platform commission is recorded on each order separately and does not increase the customer's payable total. Keep non-zero platform fees/tax disabled until checkout estimates are validated against server quotes.
+
+## Role-app review links — all remain unmerged
+
+- Customer app + database migrations: https://github.com/RamiEsam07/zeroone-wasil3/pull/2
+- Merchant/store app: https://github.com/RamiEsam07/zeroone-wasil/pull/3
+- Driver app: https://github.com/RamiEsam07/zeroone-wasil4/pull/3
+- Admin app: https://github.com/RamiEsam07/zeoone---wasil/pull/3
+
+The merchant, driver and admin pull requests are draft review requests. The customer/database review branch is also isolated from main. Keep all four separate until the full role-by-role review and runtime checks are complete.
 
 ## Before touching the live Supabase project
 
