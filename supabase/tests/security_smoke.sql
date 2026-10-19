@@ -372,7 +372,7 @@ update public.stores
    set min_order_amount = 0
  where id = '10000000-0000-0000-0000-000000000001';
 
-do $
+do $wasil_cancel_smoke$
 declare
   v_order_id uuid;
   v_stock integer;
@@ -423,7 +423,7 @@ begin
     raise exception 'Repeated cancellation changed stock a second time';
   end if;
 end;
-$;
+$wasil_cancel_smoke$;$;
 commit;
 
 begin;
