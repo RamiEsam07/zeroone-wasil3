@@ -5,7 +5,7 @@ This document is a practical checklist, not a claim that tests have already pass
 ## Current safety boundary
 
 - Review and corrective commits are isolated on `fix/wasil-foundation-review`; keep `main` unchanged. Do not merge this branch or the foundation PR until code review, SQL validation in a disposable environment, and Android build checks are complete.
-- All four role-specific Android apps (customer, merchant/store, driver, admin) have Supabase-backed login gates and role-specific repository wiring on isolated review branches. The latest customer Android build and PostgreSQL migration/security smoke test passed on review commit `720ed937`; the latest merchant, driver and admin Android builds also passed on their current review commits. These are CI checks, not real-device or live-Supabase runtime verification.
+- All four role-specific Android apps (customer, merchant/store, driver, admin) have Supabase-backed login gates and role-specific repository wiring on isolated review branches. Earlier Android builds passed for all four review branches. Every new commit triggers Android build and (for the customer/database repository) PostgreSQL migration/security checks; only the latest completed checks for the exact current commit count. These are CI checks, not real-device or live-Supabase runtime verification.
 - SQL migrations are drafts and have **not** been applied to the Supabase project.
 - Never put a Supabase `service_role` or secret key in Android code, `local.properties` committed to Git, screenshots, or chat.
 - Google login is wired in the customer app code, but requires `GOOGLE_WEB_CLIENT_ID`, the matching Android package/SHA-1 configuration, and Google provider setup in Supabase before runtime testing. Phone OTP is deferred.
@@ -34,7 +34,7 @@ This document is a practical checklist, not a claim that tests have already pass
 
 ## Required database test matrix
 
-The GitHub Actions workflows `Android build check` and `Supabase migration smoke check` run automatically on each review-branch update. Confirm the latest commit has both green checks before merge. The migration workflow applies all seven migrations to a disposable PostgreSQL database and runs schema, privilege, RLS, order-idempotency, pricing/minimum, and default-address checks. These checks do not connect to the live Supabase project and are not a full device-level Google Auth or multi-driver concurrency test.
+The GitHub Actions workflows `Android build check` and `Supabase migration smoke check` run automatically on each review-branch update. Confirm the latest commit has both green checks before merge. The migration workflow applies all seven migrations to a disposable PostgreSQL database and runs schema, privilege, RLS, order-idempotency, pricing/minimum, default-address, driver auto-assignment/location, and cancellation stock-restoration checks. These checks do not connect to the live Supabase project and are not a full device-level Google Auth or multi-driver concurrency test.
 
 | Scenario | Expected result |
 |---|---|
