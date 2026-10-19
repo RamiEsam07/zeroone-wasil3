@@ -287,7 +287,7 @@ begin
     recipient_name, recipient_phone, latitude, longitude
   ) values (
     '00000000-0000-0000-0000-000000000001', 'Far', 'Far-away address',
-    'FAR_AWAY', 'Far area', 'Far street', '9', 'Customer One', '+249900000001',
+    'KHARTOUM', 'Far area', 'Far street', '9', 'Customer One', '+249900000001',
     0.0, 0.0
   ) returning id into v_far_address_id;
 
