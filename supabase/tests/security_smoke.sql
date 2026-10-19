@@ -163,6 +163,13 @@ begin
     raise exception 'Product admin activation column is missing';
   end if;
 
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'orders' and column_name = 'platform_commission_amount'
+  ) then
+    raise exception 'Server-calculated platform commission column is missing';
+  end if;
+
   if has_column_privilege('authenticated', 'public.products', 'is_active', 'INSERT')
      or has_column_privilege('authenticated', 'public.products', 'is_active', 'UPDATE') then
     raise exception 'Merchants must not set or change the product moderation flag';
@@ -221,7 +228,7 @@ insert into public.driver_profiles (
   '00000000-0000-0000-0000-000000000003', 'motorcycle', true, 15.5900, 32.5600, now()
 );
 
-update public.platform_settings set auto_assign_drivers = true where id = true;
+update public.platform_settings set auto_assign_drivers = true, commission_rate_percent = 10 where id = true;
 
 begin;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
@@ -275,6 +282,10 @@ begin
   select total into v_total from public.orders where id = v_order_id;
   if v_total <> 24.50 then
     raise exception 'Server-calculated order total is wrong: expected 24.50, got %', v_total;
+  end if;
+
+  if (select platform_commission_amount from public.orders where id = v_order_id) <> 2.00 then
+    raise exception 'Configured 10%% platform commission should be 2.00 on a 20.00 subtotal';
   end if;
 
   select distance_km into v_distance from public.orders where id = v_order_id;
