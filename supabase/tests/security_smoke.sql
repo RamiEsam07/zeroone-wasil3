@@ -103,6 +103,11 @@ begin
     raise exception 'Merchants must not directly set product activation';
   end if;
 
+  if has_column_privilege('authenticated', 'public.orders', 'platform_commission_amount', 'INSERT')
+     or has_column_privilege('authenticated', 'public.orders', 'platform_commission_amount', 'UPDATE') then
+    raise exception 'Clients must not directly write platform commission snapshots';
+  end if;
+
   if has_column_privilege('authenticated', 'public.stores', 'is_active', 'INSERT')
      or has_column_privilege('authenticated', 'public.stores', 'is_active', 'UPDATE') then
     raise exception 'Merchants must not directly set store activation';
