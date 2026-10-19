@@ -130,6 +130,7 @@ create table public.orders (
   delivery_fee numeric(12,2) not null default 0 check (delivery_fee >= 0),
   service_fee numeric(12,2) not null default 0 check (service_fee >= 0),
   tax_amount numeric(12,2) not null default 0 check (tax_amount >= 0),
+  platform_commission_amount numeric(12,2) not null default 0 check (platform_commission_amount >= 0),
   distance_km numeric(8,2) not null default 0 check (distance_km >= 0),
   total numeric(12,2) not null default 0 check (total >= 0),
   customer_notes text,
