@@ -88,8 +88,10 @@ class SupabaseRestClient(
         val builder = Request.Builder()
             .url(projectUrl.trimEnd('/') + "/" + path.trimStart('/'))
             .header("apikey", publishableKey)
-            .header("Authorization", "Bearer " + (accessToken?.takeIf { it.isNotBlank() } ?: publishableKey))
             .header("Accept", "application/json")
+        accessToken?.takeIf { it.isNotBlank() }?.let {
+            builder.header("Authorization", "Bearer " + it)
+        }
         prefer?.takeIf { it.isNotBlank() }?.let { builder.header("Prefer", it) }
         val requestBody = body?.toString()?.toRequestBody(jsonType)
         when (method.uppercase()) {
