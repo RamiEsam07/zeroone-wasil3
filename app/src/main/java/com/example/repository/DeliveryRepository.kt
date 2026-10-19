@@ -49,6 +49,7 @@ interface DeliveryRepository {
     ): Result<Order>
 
     suspend fun refreshOrders()
+    fun clearCustomerData()
     suspend fun getOrderById(orderId: String): Result<Order>
     suspend fun setActiveOrder(order: Order?)
     suspend fun cancelOrder(orderId: String): Result<Order>

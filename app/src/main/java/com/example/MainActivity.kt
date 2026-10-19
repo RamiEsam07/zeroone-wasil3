@@ -6,6 +6,29 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.supabase.SecureSessionStore
+import com.example.data.supabase.SupabaseAuthRepository
+import com.example.data.supabase.SupabaseSession
+import com.example.data.supabase.SupabaseSessionProvider
+import com.example.api.SupabaseDeliveryApiService
+import com.example.repository.DeliveryRepositoryImpl
+import com.example.ui.screens.WasilLoginScreen
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -38,6 +60,7 @@ import com.example.ui.screens.ProductDetailDialog
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.StoreDetailScreen
 import com.example.ui.screens.StoreListScreen
+import com.example.model.User
 import com.example.ui.theme.WasilDeliveryTheme
 import com.example.viewmodel.BottomTab
 import com.example.viewmodel.DeliveryViewModel
@@ -46,7 +69,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: DeliveryViewModel by viewModels()
+    private val viewModel: DeliveryViewModel by viewModels { WasilViewModelFactory() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,15 +79,157 @@ class MainActivity : ComponentActivity() {
             WasilDeliveryTheme {
                 // Sudanese Arabic RTL experience
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    WasilCustomerApp(viewModel = viewModel)
+                    AuthenticatedWasilRoot(viewModel = viewModel)
                 }
             }
         }
     }
 }
 
+private class WasilViewModelFactory : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DeliveryViewModel::class.java)) {
+            return DeliveryViewModel(
+                DeliveryRepositoryImpl(SupabaseDeliveryApiService())
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: " + modelClass.name)
+    }
+}
+
 @Composable
-fun WasilCustomerApp(viewModel: DeliveryViewModel) {
+private fun AuthenticatedWasilRoot(viewModel: DeliveryViewModel) {
+    val context = LocalContext.current
+    val authRepository = remember(context) {
+        SupabaseAuthRepository(SecureSessionStore(context))
+    }
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val scope = rememberCoroutineScope()
+    var session by remember { mutableStateOf<SupabaseSession?>(null) }
+    var restoringSession by remember { mutableStateOf(true) }
+    var signingIn by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    suspend fun activateSession(candidate: SupabaseSession): Boolean {
+        val accessResult = authRepository.getAccountAccess(candidate)
+        if (accessResult.isFailure) {
+            errorMessage = accessResult.exceptionOrNull()?.message ?: "تعذر التحقق من صلاحيات الحساب."
+            return false
+        }
+        val access = accessResult.getOrThrow()
+        if (!access.isActive || access.role != "customer") {
+            authRepository.signOut(candidate)
+            viewModel.clearCustomerData()
+            SupabaseSessionProvider.session = null
+            session = null
+            errorMessage = if (!access.isActive) {
+                "هذا الحساب غير مفعّل حالياً. تواصل مع الدعم."
+            } else {
+                "هذا التطبيق مخصص لحسابات العملاء. استخدم التطبيق المناسب لدور حسابك."
+            }
+            return false
+        }
+        session = candidate
+        SupabaseSessionProvider.session = candidate
+        errorMessage = null
+        viewModel.refreshBackendData()
+        return true
+    }
+
+    LaunchedEffect(authRepository) {
+        SupabaseSessionProvider.sessionRefresher = { candidate ->
+            authRepository.ensureValidSession(candidate).getOrThrow()
+        }
+        val restored = authRepository.restoreSession()
+        if (restored.isFailure) {
+            errorMessage = restored.exceptionOrNull()?.message
+        } else {
+            restored.getOrNull()?.let { activateSession(it) }
+        }
+        restoringSession = false
+    }
+
+    when {
+        restoringSession -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        session == null -> {
+            WasilLoginScreen(
+                isConfigured = authRepository.isConfigured() &&
+                    BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank(),
+                isLoading = signingIn,
+                errorMessage = errorMessage,
+                onGoogleSignIn = {
+                    scope.launch {
+                        signingIn = true
+                        errorMessage = null
+                        try {
+                            check(BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
+                                "أضف GOOGLE_WEB_CLIENT_ID إلى local.properties بعد إعداد Google OAuth."
+                            }
+                            val googleOption = GetGoogleIdOption.Builder()
+                                .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                                .setFilterByAuthorizedAccounts(false)
+                                .setAutoSelectEnabled(false)
+                                .build()
+                            val request = GetCredentialRequest.Builder()
+                                .addCredentialOption(googleOption)
+                                .build()
+                            val credentialResponse = credentialManager.getCredential(context, request)
+                            val credential = credentialResponse.credential
+                            val idToken = if (
+                                credential is CustomCredential &&
+                                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                            ) {
+                                GoogleIdTokenCredential.createFrom(credential.data).idToken
+                            } else {
+                                throw IllegalStateException("لم يتم استلام بيانات تسجيل دخول Google المتوقعة.")
+                            }
+                            val signInResult = authRepository.signInWithGoogleIdToken(idToken)
+                            if (signInResult.isSuccess) {
+                                activateSession(signInResult.getOrThrow())
+                            } else {
+                                errorMessage = signInResult.exceptionOrNull()?.message ?: "تعذر تسجيل الدخول."
+                            }
+                        } catch (error: Exception) {
+                            errorMessage = error.message ?: "تعذر تسجيل الدخول باستخدام Google."
+                        } finally {
+                            signingIn = false
+                        }
+                    }
+                },
+            )
+        }
+        else -> {
+            WasilCustomerApp(
+                viewModel = viewModel,
+                currentSession = session,
+                onSignOut = {
+                    scope.launch {
+                        authRepository.signOut(session)
+                            .onFailure { errorMessage = it.message }
+                        viewModel.clearCustomerData()
+                        SupabaseSessionProvider.session = null
+                        session = null
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+fun WasilCustomerApp(
+    viewModel: DeliveryViewModel,
+    currentSession: SupabaseSession? = null,
+    onSignOut: () -> Unit = {},
+) {
     val currentScreen by viewModel.currentScreen.collectAsState()
     val currentTab by viewModel.currentTab.collectAsState()
     val cart by viewModel.cart.collectAsState()
@@ -81,6 +246,15 @@ fun WasilCustomerApp(viewModel: DeliveryViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategoryFilter by viewModel.selectedCategoryFilter.collectAsState()
     val checkoutPaymentMethod by viewModel.checkoutPaymentMethod.collectAsState()
+
+    LaunchedEffect(currentScreen) {
+        if (currentScreen is Screen.OrderTracking || currentScreen is Screen.MyOrders || currentScreen is Screen.OrderDetail) {
+            while (true) {
+                viewModel.refreshOrdersNow()
+                delay(15_000)
+            }
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -235,9 +409,10 @@ fun WasilCustomerApp(viewModel: DeliveryViewModel) {
                         CheckoutScreen(
                             cart = cart,
                             currentAddress = selectedAddress,
-                            customerPhone = selectedAddress?.recipientPhone ?: "+249 912 345 678",
+                            customerPhone = selectedAddress?.recipientPhone.orEmpty(),
                             selectedPaymentMethod = checkoutPaymentMethod,
                             onPaymentMethodSelect = { method -> viewModel.setPaymentMethod(method) },
+                            supportedPaymentMethods = listOf(com.example.model.PaymentMethod.CASH_ON_DELIVERY),
                             onChangeAddressClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = true)) },
                             onConfirmOrder = { notes -> viewModel.placeOrder(notes) }
                         )
@@ -261,6 +436,7 @@ fun WasilCustomerApp(viewModel: DeliveryViewModel) {
                                 order = order,
                                 onBackClick = { viewModel.navigateBack() },
                                 onAdvanceSimulation = { viewModel.advanceOrderSimulation(order.id) },
+                                showSimulationControls = false,
                                 onCancelOrder = { viewModel.cancelOrder(order.id) },
                                 onViewReceiptClick = { viewModel.openOrderDetail(order.id) }
                             )
@@ -290,7 +466,16 @@ fun WasilCustomerApp(viewModel: DeliveryViewModel) {
 
                     is Screen.Profile -> {
                         ProfileScreen(
-                            onSavedAddressesClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = false)) }
+                            user = currentSession?.let {
+                                User(
+                                    id = it.userId,
+                                    name = it.email?.substringBefore("@")?.takeIf { name -> name.isNotBlank() } ?: "مستخدم وصّل",
+                                    phone = it.email.orEmpty(),
+                                    email = it.email.orEmpty(),
+                                )
+                            } ?: User(id = "", name = "مستخدم وصّل", phone = "", email = ""),
+                            onSavedAddressesClick = { viewModel.navigateTo(Screen.AddressSelect(isFromCheckout = false)) },
+                            onSignOut = onSignOut,
                         )
                     }
                 }
