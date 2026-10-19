@@ -354,7 +354,7 @@ fun CheckoutScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "هذا تقدير مبدئي؛ يحسب الخادم الرسوم النهائية حسب إعدادات التوصيل والضريبة قبل تثبيت الطلب.",
+                            text = "هذا تقدير مبدئي؛ يحسب الخادم الرسوم النهائية حسب إعدادات التوصيل والضريبة عند تأكيد الطلب.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
