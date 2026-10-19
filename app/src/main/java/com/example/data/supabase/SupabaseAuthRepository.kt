@@ -118,7 +118,6 @@ class SupabaseAuthRepository(
         val request = Request.Builder()
             .url(projectUrl.trimEnd('/') + path)
             .header("apikey", publishableKey)
-            .header("Authorization", "Bearer " + publishableKey)
             .header("Accept", "application/json")
             .post(body.toString().toRequestBody(jsonType))
             .build()
