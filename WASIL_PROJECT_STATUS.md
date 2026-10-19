@@ -1,6 +1,6 @@
 # WASIL project status — review branch
 
-Last updated: 2026-10-18
+Last updated: 2026-10-19
 
 This is the current source of truth for the review branch. It separates code changes from verified runtime behavior.
 
@@ -18,7 +18,7 @@ This is the current source of truth for the review branch. It separates code cha
 | Area | Current implementation | Verification still required |
 |---|---|---|
 | Sign-in | Native Google Credential Manager obtains an ID token and exchanges it for a Supabase Auth session. | Configure Google OAuth in Supabase/Google Cloud and complete a real device sign-in. |
-| Session | AES-GCM encrypted session storage backed by Android Keystore; refresh near expiry on restore and before data calls; sign-out clears local session. | Test app restart, expiry, revoked refresh token, offline/network failures and sign-out on a device. |
+| Session | AES-GCM encrypted session storage backed by Android Keystore; refresh near expiry on restore and before data calls; sign-out clears local session. REST requests send the publishable key only in `apikey` and send `Authorization: Bearer` only for a real user access token. | Test app restart, expiry, revoked refresh token, offline/network failures and sign-out on a device. |
 | Role gate | Customer app checks the server-owned profile role and active flag before showing customer screens. | Test customer, inactive, merchant, driver and admin accounts. |
 | Customer catalog | Supabase API adapter reads active/open stores and available products. | Seed test stores/products and verify mapping, filters, images and empty states. |
 | Addresses | Reads/creates customer addresses and uses an RPC to set the default atomically. | Test owner isolation, default switching, validation and deletion behavior. |
@@ -27,7 +27,7 @@ This is the current source of truth for the review branch. It separates code cha
 | Cancellation | Server RPC validates allowed states and restores stock in the same transaction. | Test allowed/denied roles and repeated cancellation. |
 | Tracking and dispatch | Customer order/history views poll order state every 15 seconds. Driver app requests foreground location only while available or on an active delivery and publishes coordinates through a server-timestamped RPC. Merchant onboarding/profile accepts store coordinates; auto-assignment requires fresh driver coordinates, store coordinates, availability and radius. | Verify location permissions and actual coordinates on a device; test dispatch with multiple drivers and decide on Supabase Realtime/push notifications. |
 | Admin setup | RPCs provision role/activation and approve/deactivate stores; address-default RPC and least-privilege grants are included. | Bootstrap the first admin through the guarded `supabase/bootstrap_first_admin.sql.example` template in the trusted Supabase SQL Editor after the user has signed in once with Google. Test all permissions. |
-| CI | Android debug-build workflow and disposable PostgreSQL migration/security smoke workflow are present. | Android builds passed for customer (`720ed937`), merchant (`5b43a9f4`), driver (`2d931d36`) and admin (`2ed04148`). The migration/security smoke workflow passed on customer commit `720ed937`, including role/grant/RLS checks, order idempotency, pricing/minimum enforcement, default-address selection, nearest-driver assignment and server-timestamped driver location. These are CI checks only, not live Supabase or device-level tests. |
+| CI | Android debug-build workflows run on all four isolated role-app review branches. The customer/database repo also applies all seven SQL migrations to disposable PostgreSQL and runs security/functional smoke tests, including order idempotency, server pricing, coordinate-based radius rejection, driver auto-assignment/location, default-address updates and one-time stock restoration on cancellation. | Before merge, inspect the latest completed checks for the exact head commit of each branch. Green builds and disposable-database tests do not prove live Supabase, Google OAuth, or device-level end-to-end behavior. |
 
 ## Database migration order
 
@@ -51,7 +51,7 @@ Apply these only to a disposable Supabase/PostgreSQL environment first, in order
 
 ## Blockers before merge or launch
 
-- Keep the latest Android build and SQL smoke workflows green after every further code change; the current reviewed commits have passed.
+- Keep the latest Android build and SQL smoke workflows green after every further code change; earlier runs passed, and each new commit triggers fresh validation.
 - Apply all seven migrations to a disposable Supabase project (not the live project) and test role/RLS, order stock races, idempotency, cancellation and driver concurrency; CI currently validates them against a disposable PostgreSQL/Auth test schema.
 - Configure Google OAuth and run end-to-end sign-in/session refresh/sign-out.
 - Test customer catalog, address, order, cancellation and tracking flows against real test records.
