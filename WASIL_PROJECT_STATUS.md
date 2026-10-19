@@ -17,10 +17,10 @@ This is the current source of truth for the review branch. It separates code cha
 
 - Merchant: role-gated Google/Supabase sign-in, store onboarding actions and category loading are present in the inspected entry/view-model path. Live OAuth, RLS and store approval are not verified.
 - Driver: Supabase-backed driver repository and location publication are present. Real-device permission/lifecycle behavior and order assignment are not verified.
-- Admin: role-gated entry and Supabase-backed repository operations are present. Some multi-step writes can partially persist; see `WASIL_INTEGRATION_AUDIT.md` in the admin repository. Atomicity and all RLS/RPC permissions remain release gates.
+- Admin: role-gated entry and Supabase-backed repository operations are present. An atomic store-edit RPC draft was added as migration `202610170008_admin_update_store_atomic.sql`, and the admin audit branch now calls it. Both sides must be validated and deployed together; no live migration has been applied. All RLS/RPC permissions remain release gates.
 - CI: build workflows now include the operations branch. Latest successful checks for the exact current heads have not yet been confirmed in this audit.
 
-## Implemented in code — not yet fully runtime-verified
+## Latest cross-app change — draft, not production applied\n\n- Added migration `supabase/migrations/202610170008_admin_update_store_atomic.sql` with `wasil_admin_update_store(...)`. It updates store name, phone, address, open state, and approval state in one database transaction, checks active administrator privileges, requires an active merchant owner before approval, and blocks deactivation while active orders exist.\n- Admin app branch now calls this RPC instead of issuing a metadata PATCH followed by a separate activation RPC. This avoids the previously identified split-write failure mode once migration 008 is applied and verified.\n- Validation still required: run the migration smoke suite against disposable PostgreSQL, build the admin Android app at the new commit, and test both success and rejection cases. Do not apply to live Supabase yet.\n\n## Implemented in code — not yet fully runtime-verified
 
 | Area | Current implementation | Verification still required |
 |---|---|---|
