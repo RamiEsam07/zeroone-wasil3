@@ -212,7 +212,8 @@ $$;
 insert into auth.users (id, phone, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000001', '+249900000001', '{}'::jsonb),
   ('00000000-0000-0000-0000-000000000002', '+249900000002', '{}'::jsonb),
-  ('00000000-0000-0000-0000-000000000003', '+249900000003', '{}'::jsonb);
+  ('00000000-0000-0000-0000-000000000003', '+249900000003', '{}'::jsonb),
+  ('00000000-0000-0000-0000-000000000004', '+249900000004', '{}'::jsonb);
 
 insert into public.addresses (
   customer_id, label, address_text, city, area, street, building_number,
@@ -227,6 +228,9 @@ update public.profiles
 update public.profiles
    set role = 'driver'::public.wasil_role
  where id = '00000000-0000-0000-0000-000000000003';
+update public.profiles
+   set role = 'admin'::public.wasil_role, is_active = true
+ where id = '00000000-0000-0000-0000-000000000004';
 
 insert into public.stores (
   id, owner_id, category_id, name_ar, name_en, phone, address_text,
