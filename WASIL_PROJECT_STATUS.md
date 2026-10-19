@@ -7,7 +7,7 @@ This is the current source of truth for the review branch. It separates code cha
 ## Safety and branch state
 
 - Working branch: **ops/wasil-integration-audit** (isolated operations/audit branch based on `fix/wasil-foundation-review`)
-- Draft pull request: https://github.com/RamiEsam07/zeroone-wasil3/pull/2
+- Draft pull request: https://github.com/RamiEsam07/zeroone-wasil3/pull/3
 - **main is unchanged; nothing has been merged.**
 - SQL migrations are drafts and have not been applied to the live Supabase project.
 - No Supabase secret/service-role key is stored in Android code or committed configuration.
@@ -65,8 +65,8 @@ Apply all eight only to a disposable Supabase/PostgreSQL environment first, in o
 
 ## Blockers before merge or launch
 
-- Latest verified review commit: `f96b703bad9d5cf83620632b9c3f5f06adf41a2e` (2026-10-19). GitHub Actions Android build check run 255 **passed**, and Supabase migration smoke check run 218 **passed**. Both applied/compiled the reviewed branch; SQL ran against disposable PostgreSQL, not the live Supabase project. Any later commit must be rechecked before merge.
-- Apply all seven migrations to a disposable Supabase project (not the live project) and test role/RLS, order stock races, idempotency, cancellation and driver concurrency; CI currently validates them against a disposable PostgreSQL/Auth test schema.
+- The current PR head is `1409c18b4afde5e10445d7bcf82af192e8bf05ee`. After the documentation corrections, Android build check and Supabase migration smoke check were queued; wait for both to complete successfully for this exact commit before considering merge. Earlier green runs belong to earlier commits and are not sufficient.
+- Apply all eight migrations to a disposable Supabase project (not the live project) and test role/RLS, order stock races, idempotency, cancellation and driver concurrency; CI validates them against a disposable PostgreSQL/Auth test schema.
 - Owner reports Google OAuth is configured; still run end-to-end sign-in/session refresh/sign-out on a real device.
 - Test customer catalog, address, order, cancellation and tracking flows against real test records.
 - Review the latest builds for merchant, driver and admin role-app branches and run end-to-end tests for onboarding, store/product approval, driver acceptance/status changes and admin provisioning.
