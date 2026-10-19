@@ -252,6 +252,7 @@ class SupabaseDeliveryApiService(
             }
         }
         val status = when (optString("status")) {
+            "placed" -> OrderStatus.NEW
             "confirmed" -> OrderStatus.ACCEPTED
             "preparing" -> OrderStatus.PREPARING
             "ready_for_pickup", "driver_assigned" -> OrderStatus.READY
