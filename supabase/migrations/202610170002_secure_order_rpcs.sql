@@ -116,7 +116,7 @@ begin
         * cos(radians(v_address_lon - v_store_lon))
       ))) * 6371.0
     )::numeric, 2);
-    if v_distance_km > v_max_delivery_radius_km then
+    if v_distance_km > v_settings.max_delivery_radius_km then
       raise exception 'Delivery address is outside the configured service radius' using errcode = '22023';
     end if;
   end if;
