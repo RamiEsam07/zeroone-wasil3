@@ -73,6 +73,18 @@ begin
     raise exception 'Anonymous users must not execute admin operational RPCs';
   end if;
 
+  if has_function_privilege('anon', 'public.wasil_admin_get_settings()', 'EXECUTE')
+     or has_function_privilege('anon', 'public.wasil_admin_update_settings(jsonb)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.wasil_admin_set_store_active(uuid, boolean)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.wasil_admin_set_category_active(uuid, boolean)', 'EXECUTE') then
+    raise exception 'Anonymous users must not execute admin settings or approval RPCs';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.wasil_admin_get_settings()', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.wasil_admin_update_settings(jsonb)', 'EXECUTE') then
+    raise exception 'Authenticated administrators need settings RPC grants';
+  end if;
+
   if has_function_privilege('anon', 'public.wasil_auto_assign_ready_order(uuid)', 'EXECUTE')
      or has_function_privilege('anon', 'public.wasil_driver_release_assignment(uuid, text)', 'EXECUTE') then
     raise exception 'Anonymous users must not execute assignment lifecycle RPCs';
