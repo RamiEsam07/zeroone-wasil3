@@ -423,7 +423,7 @@ begin
     raise exception 'Repeated cancellation changed stock a second time';
   end if;
 end;
-$wasil_cancel_smoke$;$;
+$wasil_cancel_smoke$;
 commit;
 
 begin;
