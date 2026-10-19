@@ -211,6 +211,8 @@ drop trigger if exists on_auth_user_created_wasil on auth.users;
 create trigger on_auth_user_created_wasil
 after insert on auth.users
 for each row execute procedure public.handle_new_auth_user();
+-- Trigger-only function: prevent direct execution by API roles.
+revoke all on function public.handle_new_auth_user() from public, anon, authenticated;
 
 create or replace function public.sync_auth_user_email()
 returns trigger
