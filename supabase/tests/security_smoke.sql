@@ -287,6 +287,7 @@ begin
   if (select platform_commission_amount from public.orders where id = v_order_id) <> 2.00 then
     raise exception 'Configured 10%% platform commission should be 2.00 on a 20.00 subtotal';
   end if;
+  update public.platform_settings set commission_rate_percent = 0 where id = true;
 
   select distance_km into v_distance from public.orders where id = v_order_id;
   if v_distance <= 0 then
