@@ -154,6 +154,10 @@ fun OrderDetailScreen(
                     ReceiptRow("رسوم التوصيل", order.deliveryFee)
                     Spacer(modifier = Modifier.height(6.dp))
                     ReceiptRow("رسوم الخدمة", order.serviceFee)
+                    if (order.taxAmount > 0) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        ReceiptRow("الضريبة", order.taxAmount)
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider()

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +60,7 @@ import com.example.ui.theme.WasilSecondary
 fun ProfileScreen(
     user: User = User(),
     onSavedAddressesClick: () -> Unit,
+    onSignOut: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -206,6 +208,15 @@ fun ProfileScreen(
                         testTag = "profile_menu_terms"
                     )
                 }
+            }
+        }
+
+        item {
+            Button(
+                onClick = onSignOut,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = "تسجيل الخروج")
             }
         }
     }

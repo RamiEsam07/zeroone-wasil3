@@ -31,7 +31,7 @@ data class Cart(
         get() = if (isEmpty) 0.0 else (store?.deliveryFee ?: 0.0)
 
     val serviceFee: Double
-        get() = if (isEmpty) 0.0 else 250.0 // SDG flat platform service fee
+        get() = 0.0 // No service fee is charged until a value is configured server-side
 
     val total: Double
         get() = if (isEmpty) 0.0 else (subtotal + deliveryFee + serviceFee)

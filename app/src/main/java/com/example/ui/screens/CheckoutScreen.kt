@@ -65,6 +65,7 @@ fun CheckoutScreen(
     onPaymentMethodSelect: (PaymentMethod) -> Unit,
     onChangeAddressClick: () -> Unit,
     onConfirmOrder: (notes: String) -> Unit,
+    supportedPaymentMethods: List<PaymentMethod> = PaymentMethod.entries,
     modifier: Modifier = Modifier
 ) {
     var notes by remember { mutableStateOf("") }
@@ -243,7 +244,7 @@ fun CheckoutScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        PaymentMethod.entries.forEach { method ->
+                        supportedPaymentMethods.forEach { method ->
                             val isSelected = selectedPaymentMethod == method
                             Surface(
                                 onClick = { onPaymentMethodSelect(method) },
@@ -339,7 +340,7 @@ fun CheckoutScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "المبلغ الإجمالي المطلوب",
+                                text = "الإجمالي التقديري",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Text(
@@ -350,6 +351,13 @@ fun CheckoutScreen(
                                 )
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "هذا تقدير مبدئي؛ يحسب الخادم الرسوم النهائية حسب إعدادات التوصيل والضريبة عند تأكيد الطلب.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -376,7 +384,7 @@ fun CheckoutScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = WasilPrimary)
                 ) {
                     Text(
-                        text = "تأكيد الطلب الآن • %,.0f ج.س".format(cart.total),
+                        text = "تأكيد الطلب",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }

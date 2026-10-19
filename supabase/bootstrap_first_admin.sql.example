@@ -1,0 +1,31 @@
+-- ONE-TIME, TRUSTED SETUP ONLY.
+-- Run manually in the Supabase SQL Editor after all reviewed migrations are applied.
+-- First sign in with Google once so the account exists in auth.users and public.profiles.
+-- Replace the UUID below with that exact public.profiles.id. Never run from the Android app.
+
+begin;
+
+do $bootstrap_first_admin$
+declare
+  v_user_id uuid := 'REPLACE_WITH_AUTH_USER_UUID'::uuid;
+begin
+  if exists (
+    select 1 from public.profiles
+    where role = 'admin'::public.wasil_role and is_active
+  ) then
+    raise exception 'An active administrator already exists; use the admin provisioning workflow instead.';
+  end if;
+
+  update public.profiles
+     set role = 'admin'::public.wasil_role,
+         is_active = true,
+         updated_at = now()
+   where id = v_user_id;
+
+  if not found then
+    raise exception 'No profile exists for that UUID. Sign in once with Google and copy the matching auth user ID.';
+  end if;
+end;
+$bootstrap_first_admin$;
+
+commit;

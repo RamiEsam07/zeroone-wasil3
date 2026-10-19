@@ -115,6 +115,38 @@ class DeliveryViewModel(
         }
     }
 
+    fun clearCustomerData() {
+        repository.clearCustomerData()
+        _trackedOrder.value = null
+        _selectedStore.value = null
+        _storeProducts.value = emptyList()
+        _selectedStoreCategory.value = "الكل"
+        _productModalState.value = ProductDetailModalState()
+        _searchQuery.value = ""
+        _selectedCategoryFilter.value = StoreCategory.ALL
+        _screenStack.value = listOf(Screen.Home)
+        _currentTab.value = BottomTab.HOME
+    }
+
+    fun refreshOrdersNow() {
+        viewModelScope.launch {
+            repository.refreshOrders()
+            _trackedOrder.value?.let { current ->
+                repository.getOrderById(current.id).onSuccess { refreshed ->
+                    _trackedOrder.value = refreshed
+                }
+            }
+        }
+    }
+
+    fun refreshBackendData() {
+        viewModelScope.launch {
+            repository.refreshStores(_selectedCategoryFilter.value, _searchQuery.value)
+            repository.refreshAddresses()
+            repository.refreshOrders()
+        }
+    }
+
     fun navigateTo(screen: Screen) {
         val current = _screenStack.value
         // Avoid duplicating exact same top screen

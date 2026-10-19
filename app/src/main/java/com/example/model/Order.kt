@@ -71,11 +71,13 @@ data class Order(
     val items: List<OrderItem>,
     val subtotal: Double,
     val deliveryFee: Double,
-    val serviceFee: Double = 250.0,
+    val serviceFee: Double = 0.0,
     val total: Double,
     val paymentMethod: PaymentMethod = PaymentMethod.CASH_ON_DELIVERY,
     val status: OrderStatus = OrderStatus.NEW,
     val createdAtMillis: Long = System.currentTimeMillis(),
     val estimatedDeliveryMinutes: Int = 35,
-    val customerNotes: String = ""
+    val customerNotes: String = "",
+    val taxAmount: Double = 0.0,
+    val distanceKm: Double = 0.0
 )
