@@ -517,20 +517,62 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001
 do $$
 declare
   v_visible_addresses integer;
+  v_affected_rows integer;
+  v_foreign_insert_rejected boolean := false;
 begin
-  select count(*) into v_visible_addresses from public.addresses;
+  -- Customer one must only see their own three addresses.
+  select count(*) into v_visible_addresses
+  from public.addresses;
+
   if v_visible_addresses <> 3 then
-    raise exception 'RLS leak: customer can see % addresses; expected their three owned addresses only', v_visible_addresses;
+    raise exception
+      'RLS leak: customer can see % addresses; expected their three owned addresses only',
+      v_visible_addresses;
   end if;
 
+  -- A customer must not create an address owned by customer two.
+  begin
+    insert into public.addresses (
+      customer_id, label, address_text, city, area, street,
+      building_number, recipient_name, recipient_phone
+    ) values (
+      '00000000-0000-0000-0000-000000000002',
+      'Unauthorized', 'Foreign address', 'KHARTOUM',
+      'Test area', 'Test street', '99', 'Test', '+249900000099'
+    );
+  exception
+    when insufficient_privilege then
+      v_foreign_insert_rejected := true;
+  end;
+
+  if not v_foreign_insert_rejected then
+    raise exception
+      'Security failure: customer created an address for another customer';
+  end if;
+
+  -- A customer must not update another customer's address.
+  update public.addresses
+     set label = 'Unauthorized change'
+   where customer_id = '00000000-0000-0000-0000-000000000002';
+
+  get diagnostics v_affected_rows = row_count;
+
+  if v_affected_rows <> 0 then
+    raise exception
+      'Security failure: customer updated another customer address';
+  end if;
+  -- A customer must not promote their own account to admin.
   begin
     update public.profiles
        set role = 'admin'::public.wasil_role
      where id = '00000000-0000-0000-0000-000000000001';
+
     raise exception 'Security failure: customer changed their own role';
   exception
-    when insufficient_privilege then null;
+    when insufficient_privilege then
+      null;
   end;
 end;
 $$;
+
 rollback;
