@@ -365,6 +365,67 @@ end;
 $$;
 commit;
 
+-- Cancellation smoke: stock is restored once, and a repeated attempt cannot restore it again.
+begin;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+update public.stores
+   set min_order_amount = 0
+ where id = '10000000-0000-0000-0000-000000000001';
+
+do $
+declare
+  v_order_id uuid;
+  v_stock integer;
+  v_second_cancel_rejected boolean := false;
+begin
+  v_order_id := public.wasil_create_order(
+    '10000000-0000-0000-0000-000000000001',
+    (select id from public.addresses
+      where customer_id = '00000000-0000-0000-0000-000000000001'
+      order by created_at limit 1),
+    jsonb_build_array(jsonb_build_object(
+      'product_id', '20000000-0000-0000-0000-000000000001',
+      'quantity', 1,
+      'special_instructions', ''
+    )),
+    '30000000-0000-0000-0000-000000000003',
+    'Cancellation stock restoration smoke test'
+  );
+
+  select stock_quantity into v_stock
+  from public.products where id = '20000000-0000-0000-0000-000000000001';
+  if v_stock <> 0 then
+    raise exception 'Order creation did not reserve the last stock unit';
+  end if;
+
+  if not public.wasil_cancel_order(v_order_id, 'Smoke-test cancellation') then
+    raise exception 'Customer cancellation returned false for a cancellable order';
+  end if;
+
+  select stock_quantity into v_stock
+  from public.products where id = '20000000-0000-0000-0000-000000000001';
+  if v_stock <> 1 then
+    raise exception 'Cancellation did not restore the reserved stock unit exactly once';
+  end if;
+
+  begin
+    perform public.wasil_cancel_order(v_order_id, 'Repeated smoke-test cancellation');
+  exception when sqlstate '42501' or sqlstate '22023' then
+    v_second_cancel_rejected := true;
+  end;
+  if not v_second_cancel_rejected then
+    raise exception 'Repeated cancellation should be rejected after the order is cancelled';
+  end if;
+
+  select stock_quantity into v_stock
+  from public.products where id = '20000000-0000-0000-0000-000000000001';
+  if v_stock <> 1 then
+    raise exception 'Repeated cancellation changed stock a second time';
+  end if;
+end;
+$;
+commit;
+
 begin;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
